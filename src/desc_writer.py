@@ -8,10 +8,10 @@ load_dotenv()
 class DescriptionWriter:
     """Cloud-only generator using OpenRouter with reasoning logic."""
 
-    def __init__(self):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+    def __init__(self, api_key=None, model=None):
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+        self.model = model or "openrouter/free"
         self.url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "openrouter/free"
 
     def write_description_stream(self, product_info, style_example=None):
         """Generates content using user-provided multi-call reasoning logic."""
@@ -82,7 +82,7 @@ class DescriptionWriter:
                                 if delta:
                                     full_content += delta
                                     yield delta
-                            except:
+                            except (KeyError, json.JSONDecodeError):
                                 continue
                 
                 print(f"[LOG] >>> SYNTHESIS COMPLETE. {len(full_content)} chars generated.")

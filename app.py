@@ -508,7 +508,7 @@ def view_config():
                         help="Professional AI models via inference.sh. Requires INFSH_API_KEY."
                     )
 
-            use_n8n = st.checkbox(
+            st.checkbox(
                 "Use n8n pipeline",
                 value=st.session_state.get("use_n8n", False),
                 key="use_n8n",
@@ -606,7 +606,10 @@ def view_exec():
         log = st.empty()
 
         scraper = TunisianScraper()
-        writer = DescriptionWriter()
+        writer = DescriptionWriter(
+            api_key=st.session_state.get("OPENROUTER_API_KEY"),
+            model=st.session_state.get("OPENROUTER_MODEL")
+        )
 
         # Auto-enhance + n8n integration
         do_enhance = st.session_state.get("auto_enhance", False)
@@ -922,7 +925,15 @@ def main():
         return
 
     # Session state defaults
-    for key, default in [("ui", "import"), ("db", {}), ("out", []), ("img_ptr", {})]:
+    defaults = [
+        ("ui", "import"),
+        ("db", {}),
+        ("out", []),
+        ("img_ptr", {}),
+        ("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY", "")),
+        ("OPENROUTER_MODEL", "openrouter/free")
+    ]
+    for key, default in defaults:
         if key not in st.session_state:
             st.session_state[key] = default
 
