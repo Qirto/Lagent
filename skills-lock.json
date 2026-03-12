@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "image-enhancer": {
+      "source": "composiohq/awesome-claude-skills",
+      "sourceType": "github",
+      "computedHash": "e673c02c3e970b3ea0bd4ca449ae12f955d8476bb4196842d1b1489cca6be219"
+    },
+    "image-upscaling": {
+      "source": "inference-shell/skills",
+      "sourceType": "github",
+      "computedHash": "3c0e3bc1f4669dd6d271db365f1f6b1d806447b3d733c0d82a332894b246ae64"
+    },
+    "web-content": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "303a199de10fa39278c987eaedfdab46965f57949a8b53f7fcd1c7a3f4621d36"
+    }
+  }
+}
