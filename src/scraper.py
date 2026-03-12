@@ -129,7 +129,10 @@ class TunisianScraper:
             if not link or not link.has_attr('href'):
                 continue
 
-            href = link['href']
+            href = link.get('href')
+            if not href or not isinstance(href, str):
+                continue
+
             if not href.startswith("http"):
                 href = base_url + href
 
@@ -170,7 +173,7 @@ class TunisianScraper:
                             or img.get('src')
                             or img.get('data-src')
                         )
-                        if src:
+                        if src and isinstance(src, str):
                             if not src.startswith("http"):
                                 src = base_url + src
                             details['images'].append(src)
@@ -334,6 +337,13 @@ class TunisianScraper:
                 except Exception as e:
                     print(f"[LOG]   Error on {site}: {e}")
 
+        # --- FALLBACK: Search "Any Website" via Google if not found on primary sites ---
+        if not results:
+            print(f"[LOG]   Not found on primary sites. Trying global search fallback...")
+            global_res = self.search_global(ref, color)
+            if global_res:
+                results.append(global_res)
+
         if not results:
             return None
 
@@ -350,4 +360,83 @@ class TunisianScraper:
 
         base['images'] = combined_imgs
         base['all_sources'] = all_sources
+        base['color_tag'] = color # Keep for renaming
         return base
+
+    def search_global(self, ref, color=""):
+        """Fallback search using Google to find any Tunisian retailer."""
+        query = f'"{ref}" site:.tn'
+        if color:
+            query += f' "{color}"'
+        
+        search_url = f"https://www.google.com/search?q={quote(query)}"
+        soup = self._get_soup(search_url)
+        if not soup:
+            return None
+
+        # Look for potential retailer links in search results
+        links = []
+        for a in soup.select('a'):
+            href = a.get('href')
+            if href and isinstance(href, str) and '/url?q=' in href:
+                url = href.split('/url?q=')[1].split('&')[0]
+                if '.tn' in url and 'google' not in url:
+                    links.append(url)
+
+        # Try to scrape the first 3 relevant links
+        for url in links[:3]:
+            try:
+                print(f"[LOG]   Trying external site: {url}")
+                page_soup = self._get_soup(url)
+                if not page_soup:
+                    continue
+
+                # Heuristic extraction for unknown sites
+                h1 = page_soup.find('h1')
+                title = h1.get_text(strip=True) if h1 else page_soup.title.string if page_soup.title else ""
+                
+                # Simple price detection
+                price_text = ""
+                price_candidates = page_soup.find_all(string=re.compile(r'\d[\d\s,.]*(DT|TND)', re.I))
+                if price_candidates:
+                    price_text = self.format_price(str(price_candidates[0]))
+
+                # Simple description detection
+                desc = ""
+                desc_el = (
+                    page_soup.find(id=re.compile(r'desc', re.I)) or 
+                    page_soup.find(class_=re.compile(r'desc|specs', re.I)) or
+                    page_soup.find('article')
+                )
+                if desc_el:
+                    desc = desc_el.get_text(strip=True, separator='\n')
+
+                # Simple image detection
+                imgs = []
+                for img in page_soup.find_all('img'):
+                    src = img.get('src') or img.get('data-src')
+                    if src and isinstance(src, str):
+                        low_src = src.lower()
+                        if 'product' in low_src or 'catalog' in low_src or 'media' in low_src:
+                            if not src.startswith('http'):
+                                domain = url.split('//')[-1].split('/')[0]
+                                src = f"https://{domain}/{src.lstrip('/')}"
+                            imgs.append(src)
+
+                details = {
+                    "source": url.split('//')[-1].split('/')[0],
+                    "sku": ref,
+                    "title": str(title) if title else "",
+                    "url": url,
+                    "price": price_text or "N/A",
+                    "specs": desc,
+                    "images": self._clean_images(imgs),
+                }
+
+                # If it looks like a real product page, return it
+                if title and (ref.upper() in str(title).upper() or ref.upper() in desc.upper()):
+                    return details
+            except Exception as e:
+                print(f"[LOG]   Failed global fallback link {url}: {e}")
+        
+        return None

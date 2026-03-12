@@ -4,6 +4,8 @@ import sys
 import requests
 import time
 import re
+import io
+import zipfile
 from dotenv import load_dotenv
 
 # Path Config
@@ -426,7 +428,7 @@ def view_import():
                 f'<div class="file-chip"><strong>{pdf.name}</strong> &mdash; {size_kb:,.0f} KB ready</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Extract Products", use_container_width=True):
+            if st.button("Download", use_container_width=True):
                 with open("temp_catalog.pdf", "wb") as f:
                     f.write(pdf.getvalue())
                 with st.status("Scanning catalog...", expanded=True) as status:
@@ -681,6 +683,14 @@ def view_exec():
                 desc = ""
                 for chunk in writer.write_description_stream(web, st.session_state.active_dna):
                     desc += chunk
+                
+                # --- AI FALLBACK: If API fails, use raw site description ---
+                if not desc or "❌ ERROR" in desc or len(desc) < 50:
+                    print(f"[LOG]   AI failed or returned error. Falling back to site description for {ref}")
+                    desc = web.get("specs", "Description non disponible.")
+                    if web.get("url"):
+                        desc += f"\n\n🔗 **Source:** [{web.get('source', 'Site Web')}]({web.get('url')})"
+
                 st.session_state.out.append({"id": ref, "data": web, "desc": desc})
                 st.session_state.img_ptr[ref] = 0
 
@@ -719,7 +729,7 @@ def view_results():
     )
 
     # ── Action bar ──
-    c1, c2, _ = st.columns([1, 1, 4])
+    c1, c2, _ = st.columns([1, 1.2, 4])
     with c1:
         st.markdown('<div class="ghost-btn">', unsafe_allow_html=True)
         if st.button("New Batch", use_container_width=True, key="btn_new"):
@@ -728,8 +738,15 @@ def view_results():
         st.markdown('</div>', unsafe_allow_html=True)
     with c2:
         if ok > 0:
-            if st.button("Export All", use_container_width=True, key="btn_export"):
-                _export_results()
+            zip_data = _prepare_download_zip()
+            st.download_button(
+                "Download All (ZIP)",
+                data=zip_data,
+                file_name=f"product_export_{int(time.time())}.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="btn_download_zip"
+            )
 
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
@@ -856,47 +873,50 @@ def view_results():
 
 
 
-def _export_results():
-    """Export all successful results to disk."""
-    with st.spinner("Exporting files..."):
-        path = "synthesis_output"
-        os.makedirs(path, exist_ok=True)
-        exported = 0
+def _prepare_download_zip():
+    """Create a ZIP archive in memory containing all successful results."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for res_item in st.session_state.out:
             if res_item.get("failed"):
                 continue
             
             res = res_item["data"]
-            safe_id = re.sub(r"[^A-Z0-9-]", "_", res_item["id"].upper())
-            p_dir = os.path.join(path, safe_id)
-            os.makedirs(p_dir, exist_ok=True)
+            # Naming: [Product Name] - [Color]
+            title = res.get("title", res_item["id"])
+            color = res.get("color_tag", "")
+            base_name = title
+            if color:
+                base_name += f" - {color}"
             
-            with open(os.path.join(p_dir, "description.txt"), "w", encoding="utf-8") as f:
-                f.write(res_item["desc"])
+            # Sanitize for filename
+            safe_base = re.sub(r'[<>:"/\\|?*]', '_', base_name).strip()
+            folder_path = f"{safe_base}/"
             
-            # Images
-            i_dir = os.path.join(p_dir, "images")
-            os.makedirs(i_dir, exist_ok=True)
+            # Save description
+            z.writestr(f"{folder_path}description.txt", res_item["desc"])
             
-            # Save enhanced if they exist
-            if "enhanced_images" in res and res["enhanced_images"]:
-                for idx, img_bytes in enumerate(res["enhanced_images"]):
-                    with open(os.path.join(i_dir, f"enhanced_{idx + 1}.png"), "wb") as f:
-                        f.write(img_bytes)
+            # Enhanced images if they exist, otherwise originals
+            has_enhanced = "enhanced_images" in res and res["enhanced_images"]
+            imgs = res["enhanced_images"] if has_enhanced else []
             
-            # Save originals
-            orig_dir = os.path.join(i_dir, "originals")
-            os.makedirs(orig_dir, exist_ok=True)
-            for idx, url in enumerate(res.get("images", [])):
-                try:
-                    r = requests.get(url, timeout=10)
-                    if r.status_code == 200:
-                        with open(os.path.join(orig_dir, f"view_{idx + 1}.jpg"), "wb") as f:
-                            f.write(r.content)
-                except Exception:
-                    pass
-            exported += 1
-        st.success(f"Exported {exported} products to: {os.path.abspath(path)}")
+            if imgs:
+                for idx, img_bytes in enumerate(imgs):
+                    ext = "png"
+                    z.writestr(f"{folder_path}{safe_base} - {idx + 1}.{ext}", img_bytes)
+            else:
+                # Fallback to downloading originals if no enhancement was done
+                for idx, url in enumerate(res.get("images", [])):
+                    try:
+                        r = requests.get(url, timeout=5)
+                        if r.status_code == 200:
+                            ext = url.split('.')[-1].split('?')[0] or "jpg"
+                            z.writestr(f"{folder_path}{safe_base} - {idx + 1}.{ext}", r.content)
+                    except Exception:
+                        pass
+                        
+    buf.seek(0)
+    return buf.getvalue()
 
 
 # ──────────────────────────────────────────────
