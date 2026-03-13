@@ -7,181 +7,42 @@ from PIL import Image
 from streamlit_image_comparison import image_comparison
 
 # Path setup
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 try:
-    from image_enhancer import ImageEnhancer
+    from src.image_enhancer import ImageEnhancer
     HAS_MODULES = True
 except Exception as e:
     HAS_MODULES = False
     _ERR = str(e)
 
 
+from src.theme import apply_theme
+
 # ──────────────────────────────────────────────
-# THEME (shared)
+# THEME & UI
 # ──────────────────────────────────────────────
 
-def apply_theme():
+def clean_cache():
+    st.cache_data.clear()
+    st.cache_resource.clear()
+
+def apply_custom_css():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --primary: #00f3ff;
-            --primary-glow: rgba(0, 243, 255, 0.4);
-            --secondary: #ff00ff;
-            --secondary-glow: rgba(255, 0, 255, 0.4);
-            --accent: #bc13fe;
-            --bg: #09090b;
-            --bg-elevated: #111115;
-            --surface: rgba(17, 17, 21, 0.65);
-            --border: #27272a;
-            --border-neon: rgba(0, 243, 255, 0.6);
-            --text: #f8fafc;
-            --text-secondary: #94a3b8;
-            --radius: 0px;
-            --radius-btn: 2px;
-            --neu-shadow: 6px 6px 12px #040405, -6px -6px 12px #0e0e11;
-        }
-
-        html, body, [data-testid="stAppViewContainer"],
-        .stApp, [data-testid="stMainBlockContainer"] {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg) !important;
-            background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            color: var(--text);
-        }
-
-        .sec-title {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 1.1rem; font-weight: 600; color: var(--text);
-            text-transform: uppercase; letter-spacing: 2px;
-        }
-        .sec-desc {
-            font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;
-        }
-        
-        .brand {
-            text-align: left; padding: 1rem 0;
-        }
-        .brand h1 {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 1.5rem; font-weight: 900; letter-spacing: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-
-        [data-testid="stVerticalBlockBorderWrapper"] > div:has(> div.element-container) {
-            background: var(--surface) !important;
-            backdrop-filter: blur(12px) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius) !important;
-        }
-
         .analysis-chip {
-            padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;
-            font-family: 'JetBrains Mono', monospace;
-            background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2);
-            color: var(--secondary); display: inline-block; margin-right: 5px;
-        }
-
-        .stButton > button {
-            background-color: var(--bg) !important;
-            color: var(--primary) !important;
-            border: 2px solid var(--primary) !important;
-            border-radius: var(--radius) !important;
-            text-transform: uppercase;
-            font-family: 'Orbitron', sans-serif !important;
-            font-weight: 700 !important;
-            letter-spacing: 1.5px;
-            transition: all 0.2s;
-        }
-        .stButton > button:hover {
-            background-color: rgba(0, 243, 255, 0.1) !important;
-            box-shadow: 0 0 20px var(--primary-glow) !important;
-            transform: translateY(-2px);
-        }
-
-        [data-testid="stSidebar"] {
-            background-color: rgba(9, 9, 11, 0.75) !important;
-            border-right: 2px solid var(--border) !important;
-            backdrop-filter: blur(24px) saturate(180%) !important;
-            box-shadow: 5px 0 25px rgba(0, 243, 255, 0.1);
-        }
-        [data-testid="stSidebarNav"] {
-            background-color: transparent !important;
-            padding-top: 2rem;
-        }
-
-        [data-testid="stSidebarNav"] li {
-            border-radius: 0;
-            margin-bottom: 5px;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        [data-testid="stSidebarNav"] li:hover {
-            background: rgba(0, 243, 255, 0.05) !important;
-            border: 1px solid var(--primary) !important;
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        [data-testid="stSidebarNav"] li a span {
-            font-family: 'Orbitron', sans-serif !important;
-            text-transform: uppercase;
-            font-size: 0.8rem !important;
-            letter-spacing: 1px;
-        }
-
-        [data-testid="stSidebarNav"] li[data-selected="true"] {
-            background: rgba(0, 243, 255, 0.15) !important;
-            border-left: 5px solid var(--primary) !important;
-            box-shadow: 0 0 15px var(--primary-glow);
-        }
-
-        /* Scanline effect for sidebar */
-        [data-testid="stSidebar"]::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        /* Back to Top Button */
-        .back-to-top {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--surface);
+            background: rgba(0, 243, 255, 0.1);
             border: 1px solid var(--primary);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
             color: var(--primary);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 9999;
-            transition: all 0.3s;
-            text-decoration: none !important;
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-        .back-to-top:hover {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 20px var(--primary-glow);
-            transform: translateY(-3px);
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-family: 'JetBrains Mono', monospace;
         }
         </style>
-        <a href="#lagent-enhance" class="back-to-top">↑</a>
     """, unsafe_allow_html=True)
 
 
@@ -192,6 +53,7 @@ def main():
         initial_sidebar_state="expanded",
     )
     apply_theme()
+    apply_custom_css()
 
     st.markdown(
         '<div class="brand" id="lagent-enhance">'

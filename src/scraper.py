@@ -74,38 +74,64 @@ class TunisianScraper:
                     seen.add(core_name)
         return cleaned
 
-    def _verify_match(self, ref, color, details):
-        """Strictly verifies if the product matches the Reference and Color."""
-        def normalize(s):
-            return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+    @staticmethod
+    def _normalize(s):
+        return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
-        clean_sku = normalize(details.get('sku', ''))
-        clean_ref = normalize(ref)
-        clean_title = details.get('title', '').upper()
+    @staticmethod
+    def _tokenize(s):
+        return [TunisianScraper._normalize(t) for t in re.split(r'[\s\-_/]+', str(s)) if TunisianScraper._normalize(t)]
 
-        # 1. Matching Logic: Reference must be in Title or SKU
-        # Handle aliases (SOG -> SPIRITOFGAMER)
-        ref_parts = [normalize(p) for p in str(ref).split() if normalize(p)]
+    def _score_match(self, ref, color, details):
+        """Scores how well a product matches the reference. Returns 0 for no match."""
+        clean_sku = self._normalize(details.get('sku', ''))
+        clean_ref = self._normalize(ref)
+        clean_title = self._normalize(details.get('title', ''))
+
+        if not clean_ref:
+            return 0
+
+        # Alias handling
         ref_aliased = clean_ref.replace("SOG", "SPIRITOFGAMER")
-        title_norm = normalize(clean_title)
-        title_aliased = title_norm.replace("SOG", "SPIRITOFGAMER")
+        title_aliased = clean_title.replace("SOG", "SPIRITOFGAMER")
 
-        is_match = (
-            (clean_ref and clean_sku and (clean_ref in clean_sku or clean_sku in clean_ref)) or
-            (clean_ref in title_norm) or
-            (ref_aliased in title_aliased) or
-            (ref_parts and all(p in title_norm for p in ref_parts))
-        )
+        score = 0
 
-        if not is_match:
-            return False
+        # 1. Exact Match
+        if clean_sku and clean_ref == clean_sku:
+            score += 100
+        elif clean_ref == clean_title:
+            score += 90
 
-        # 2. Strict Color Matching
-        if color:
-            c_upper = color.upper()
-            search_space = (clean_title + " " + str(details.get('specs', ''))).upper()
+        # 2. Word-boundary token match
+        ref_tokens = self._tokenize(ref)
+        title_tokens = self._tokenize(details.get('title', ''))
+        sku_tokens = self._tokenize(details.get('sku', ''))
+
+        if ref_tokens:
+            title_hits = sum(1 for t in ref_tokens if t in title_tokens)
+            sku_hits = sum(1 for t in ref_tokens if t in sku_tokens)
+            if title_hits == len(ref_tokens) or sku_hits == len(ref_tokens):
+                score += 60
+
+        # 3. Contiguous substring with boundary check
+        if len(clean_ref) >= 4:
+            if clean_sku and clean_sku.startswith(clean_ref):
+                score += 40
             
-            # Map search color to variants and negative constraints
+            for haystack, needle in [(clean_title, clean_ref), (title_aliased, ref_aliased)]:
+                pos = haystack.find(needle)
+                if pos >= 0:
+                    end = pos + len(needle)
+                    if end >= len(haystack) or not haystack[end].isdigit():
+                        score += 30
+                        break
+
+        # 4. Color Check
+        if color and score > 0:
+            c_upper = color.upper()
+            search_space = (details.get('title', '') + " " + str(details.get('specs', ''))[:500]).upper()
+            
             constraints = {
                 "NOIR": {"pos": ["NOIR", "BLACK", "BLK"], "neg": ["BLANC", "WHITE", "ROUGE", "RED", "BLEU", "BLUE", "ROSE", "PINK", "VERT", "GREEN"]},
                 "BLANC": {"pos": ["BLANC", "WHITE", "WHT", "ARTIC", "SNOW"], "neg": ["NOIR", "BLACK", "ROUGE", "RED", "BLEU", "BLUE", "ROSE", "PINK", "VERT", "GREEN"]},
@@ -117,18 +143,40 @@ class TunisianScraper:
 
             if c_upper in constraints:
                 cfg = constraints[c_upper]
-                # Must have at least one positive indicator
                 if not any(v in search_space for v in cfg["pos"]):
-                    return False
-                # Must NOT have any explicit negative indicator in the TITLE (to avoid cross-color model listing)
+                    return 0
                 if any(v in clean_title for v in cfg["neg"]):
-                    return False
+                    score -= 20
             else:
-                # Generic color check
                 if c_upper not in search_space:
-                    return False
+                    return 0
                 
-        return True
+        return score
+
+    def _scrape_short_desc(self, psoup, platform="prestashop"):
+        short_desc = ""
+        if platform == "prestashop":
+            for sel in ["#product-description-short", ".product-description-short", ".short-description"]:
+                el = psoup.select_one(sel)
+                if el:
+                    short_desc = el.get_text(strip=True)
+                    break
+        elif platform == "magento":
+            el = psoup.select_one(".product.attribute.overview .value") or psoup.select_one(".product-info-main .overview")
+            if el:
+                short_desc = el.get_text(strip=True)
+        elif platform == "woocommerce":
+            el = psoup.select_one(".woocommerce-product-details__short-description")
+            if el:
+                short_desc = el.get_text(strip=True)
+        
+        if not short_desc:
+            meta = psoup.find("meta", attrs={"name": "description"})
+            if meta and meta.get("content"):
+                content = meta.get("content")
+                short_desc = str(content[0] if isinstance(content, list) else content).strip()
+                
+        return short_desc[:600]
 
     # ──────────────────────────────────────────
     # PRESTASHOP GENERIC HELPER
@@ -159,6 +207,7 @@ class TunisianScraper:
         if not soup:
             return None
 
+        candidates = []
         for item in soup.select(item_sel):
             link = item.select_one(link_sel)
             if not link or not link.has_attr('href'):
@@ -196,13 +245,15 @@ class TunisianScraper:
 
             specs_el = psoup.select_one(specs_sel)
             specs = specs_el.get_text(strip=True) if specs_el else ""
+            short_desc = self._scrape_short_desc(psoup, "prestashop")
 
             details = {
                 "source": source_name, "sku": sku, "title": title,
-                "url": href, "price": price, "specs": specs, "images": [],
+                "url": href, "price": price, "specs": specs[:2000], "short_description": short_desc, "images": [],
             }
 
-            if self._verify_match(ref, color, details):
+            score = self._score_match(ref, color, details)
+            if score > 0:
                 # OG image
                 og = psoup.find("meta", property="og:image")
                 if og and og.get("content"):
@@ -224,7 +275,14 @@ class TunisianScraper:
                             details['images'].append(src)
 
                 details['images'] = self._clean_images(details['images'])
-                return details
+                details['_match_score'] = score
+                candidates.append(details)
+
+        if candidates:
+            candidates.sort(key=lambda x: x['_match_score'], reverse=True)
+            best = candidates[0]
+            best.pop('_match_score', None)
+            return best
         return None
 
     # ──────────────────────────────────────────
@@ -239,6 +297,7 @@ class TunisianScraper:
         if not soup:
             return None
 
+        candidates = []
         for item in soup.select(".product-item"):
             link = item.select_one(".product-item-link")
             if not link or not link.has_attr('href'):
@@ -275,13 +334,15 @@ class TunisianScraper:
 
             specs_el = psoup.select_one("#description") or psoup.select_one(".product-info-main")
             specs = specs_el.get_text(strip=True) if specs_el else ""
+            short_desc = self._scrape_short_desc(psoup, "magento")
 
             details = {
                 "source": "MyTek", "sku": sku, "title": title,
-                "url": link['href'], "price": price, "specs": specs, "images": [],
+                "url": link['href'], "price": price, "specs": specs[:2000], "short_description": short_desc, "images": [],
             }
 
-            if self._verify_match(ref, color, details):
+            score = self._score_match(ref, color, details)
+            if score > 0:
                 scripts = psoup.find_all("script", type="text/x-magento-init")
                 for s in scripts:
                     if 'mage/gallery/gallery' in s.text:
@@ -291,7 +352,14 @@ class TunisianScraper:
                 if og:
                     details['images'].insert(0, og.get("content"))
                 details['images'] = self._clean_images(details['images'])
-                return details
+                details['_match_score'] = score
+                candidates.append(details)
+
+        if candidates:
+            candidates.sort(key=lambda x: x['_match_score'], reverse=True)
+            best = candidates[0]
+            best.pop('_match_score', None)
+            return best
         return None
 
     def search_tunisianet(self, ref, color=""):
@@ -354,6 +422,7 @@ class TunisianScraper:
         if not soup:
             return None
 
+        candidates = []
         # WooCommerce typically uses .product or .type-product
         for item in soup.select(".product, .type-product"):
             link = item.select_one("a[href]")
@@ -374,26 +443,37 @@ class TunisianScraper:
             price_el = psoup.select_one(".price, .woocommerce-Price-amount")
             price = self.format_price(price_el.get_text(strip=True)) if price_el else "N/A"
 
-            specs_el = psoup.select_one(".woocommerce-product-details__short-description, #tab-description, .description")
+            specs_el = psoup.select_one("#tab-description, .description")
             specs = specs_el.get_text(strip=True, separator='\n') if specs_el else ""
+            short_desc = self._scrape_short_desc(psoup, "woocommerce")
 
             details = {
                 "source": "BestBuy", "sku": sku, "title": title,
-                "url": href, "price": price, "specs": specs, "images": [],
+                "url": href, "price": price, "specs": specs[:2000], "short_description": short_desc, "images": [],
             }
 
-            if self._verify_match(ref, color, details):
+            score = self._score_match(ref, color, details)
+            if score > 0:
                 # Images
                 og = psoup.find("meta", property="og:image")
-                if og: details['images'].append(og.get("content"))
+                if og:
+                    details['images'].append(og.get("content"))
                 
                 # Gallery
                 for img in psoup.select(".woocommerce-product-gallery img, .images img"):
                     src = img.get('data-src') or img.get('src')
-                    if src: details['images'].append(src)
+                    if src:
+                        details['images'].append(src)
                 
                 details['images'] = self._clean_images(details['images'])
-                return details
+                details['_match_score'] = score
+                candidates.append(details)
+
+        if candidates:
+            candidates.sort(key=lambda x: x['_match_score'], reverse=True)
+            best = candidates[0]
+            best.pop('_match_score', None)
+            return best
         return None
 
     def search_scoop(self, ref, color=""):
@@ -433,26 +513,40 @@ class TunisianScraper:
         ]
 
         results = []
-        with ThreadPoolExecutor(max_workers=9) as executor:
-            site_names = [
-                "MyTek", "Tunisianet", "Wiki", "MegaPC",
-                "SBS", "Spacenet", "Scoop", "Zoom", "BestBuy"
-            ]
-            futures = {
-                executor.submit(fn, ref, color): name
-                for fn, name in zip(search_fns, site_names)
-            }
-            for future in as_completed(futures):
-                site = futures[future]
-                try:
-                    result = future.result()
-                    if result:
-                        print(f"[LOG]   Found on {site}")
-                        results.append(result)
-                except Exception as e:
-                    print(f"[LOG]   Error on {site}: {e}")
+        site_names = [
+            "MyTek", "Tunisianet", "Wiki", "MegaPC",
+            "SBS", "Spacenet", "Scoop", "Zoom", "BestBuy"
+        ]
 
-        # --- FALLBACK: Search "Any Website" via Google if not found on primary sites ---
+        def _run_parallel(query_term):
+            res = []
+            with ThreadPoolExecutor(max_workers=9) as executor:
+                futures = {
+                    executor.submit(fn, query_term, color): name
+                    for fn, name in zip(search_fns, site_names)
+                }
+                for future in as_completed(futures):
+                    site = futures[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            print(f"[LOG]   Found on {site}")
+                            res.append(result)
+                    except Exception as e:
+                        print(f"[LOG]   Error on {site}: {e}")
+            return res
+
+        results = _run_parallel(ref)
+
+        # Fallback to designation if reference yields nothing
+        if not results and designation:
+            # try to create a clean query term from designation
+            fallback_query = str(designation).strip()
+            if len(fallback_query) > 5:
+                print(f"[LOG]   Ref '{ref}' not found. Trying designation fallback: {fallback_query}")
+                results = _run_parallel(fallback_query)
+
+        # Fallback: Search "Any Website" via Google
         if not results:
             print("[LOG]   Not found on primary sites. Trying global search fallback...")
             global_res = self.search_global(ref, color)
@@ -463,15 +557,23 @@ class TunisianScraper:
             return None
 
         # Aggregation: 
-        # 1. Use the result with the most specs as the base
-        results.sort(key=lambda x: len(x.get('specs', '')), reverse=True)
+        # 1. Use the result with the highest score, then most specs as the base
+        results.sort(key=lambda x: (x.get('_match_score', 0), len(x.get('specs', ''))), reverse=True)
         base = results[0]
         
         combined_imgs = []
         all_sources = []
+        
+        # Keep all descriptions for cross-verification
+        all_descriptions = []
 
         for r in results:
             all_sources.append(r['source'])
+            all_descriptions.append({
+                "source": r['source'],
+                "short": r.get('short_description', ''),
+                "specs": r.get('specs', '')
+            })
             for img in r['images']:
                 # Deduplication logic
                 core_img = re.sub(r'-(large_default|medium_default|small_default|home_default|thickbox_default)\.jpg', '', img)
@@ -480,7 +582,16 @@ class TunisianScraper:
 
         base['images'] = self._clean_images(combined_imgs)
         base['all_sources'] = list(set(all_sources))
+        base['all_descriptions'] = all_descriptions
         base['color_tag'] = color 
+        
+        # Pick the best short_description (longest non-empty across sources)
+        short_descs = [r.get('short_description', '') for r in results if r.get('short_description')]
+        if short_descs:
+            base['short_description'] = max(short_descs, key=len)
+        elif not base.get('short_description'):
+            base['short_description'] = ''
+
         return base
 
     def search_global(self, ref, color=""):
@@ -530,6 +641,12 @@ class TunisianScraper:
                 )
                 if desc_el:
                     desc = desc_el.get_text(strip=True, separator='\n')
+                    
+                meta_desc = page_soup.find("meta", attrs={"name": "description"})
+                short_desc = ""
+                if meta_desc and meta_desc.get("content"):
+                    content = meta_desc.get("content")
+                    short_desc = str(content[0] if isinstance(content, list) else content).strip()
 
                 # Simple image detection
                 imgs = []
@@ -549,8 +666,10 @@ class TunisianScraper:
                     "title": str(title) if title else "",
                     "url": url,
                     "price": price_text or "N/A",
-                    "specs": desc,
+                    "specs": desc[:2000],
+                    "short_description": short_desc[:600],
                     "images": self._clean_images(imgs),
+                    "_match_score": 50 # Base score for global fallback
                 }
 
                 # If it looks like a real product page, return it

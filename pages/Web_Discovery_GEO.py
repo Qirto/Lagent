@@ -3,118 +3,25 @@ import sys
 import os
 
 # Path setup
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 try:
-    from web_content_optimizer import WebContentOptimizer
+    from src.web_content_optimizer import WebContentOptimizer
     HAS_MODULES = True
 except Exception as e:
-    HAS_MODULES = False
-    _ERR = str(e)
+    try:
+        from web_content_optimizer import WebContentOptimizer
+        HAS_MODULES = True
+    except Exception as e2:
+        HAS_MODULES = False
+        _ERR = f"P1: {e} | P2: {e2}"
 
+
+from src.theme import apply_theme
 
 # ──────────────────────────────────────────────
-# THEME (shared)
+# MAIN
 # ──────────────────────────────────────────────
-
-def apply_theme():
-    st.markdown("""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --primary: #bc13fe;
-            --primary-glow: rgba(188, 19, 254, 0.4);
-            --secondary: #00f3ff;
-            --secondary-glow: rgba(0, 243, 255, 0.3);
-            --bg: #050505;
-            --surface: rgba(16, 16, 24, 0.7);
-            --border: rgba(188, 19, 254, 0.3);
-            --text: #e6edf3;
-            --text-secondary: #8b949e;
-            --radius: 4px;
-        }
-
-        html, body, [data-testid="stAppViewContainer"],
-        .stApp, [data-testid="stMainBlockContainer"] {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg) !important;
-            background-image: 
-                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 50%),
-                linear-gradient(rgba(188, 19, 254, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(188, 19, 254, 0.02) 1px, transparent 1px);
-            background-size: 100% 100%, 30px 30px, 30px 30px;
-        }
-
-        .sec-title {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;
-            text-transform: uppercase; letter-spacing: 2px;
-        }
-        .sec-desc {
-            font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;
-        }
-        
-        .brand {
-            text-align: center; padding: 1.5rem 0;
-        }
-        .brand h1 {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 2rem; font-weight: 900; letter-spacing: 8px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-
-        [data-testid="stVerticalBlockBorderWrapper"] > div:has(> div.element-container) {
-            background: var(--surface) !important;
-            backdrop-filter: blur(12px) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius) !important;
-            padding: 1.5rem;
-        }
-        
-        [data-testid="stSidebar"] {
-            background-color: rgba(5, 5, 5, 0.95) !important;
-            border-right: 1px solid var(--border) !important;
-            backdrop-filter: blur(15px);
-            box-shadow: 5px 0 15px rgba(188, 19, 254, 0.1);
-        }
-        [data-testid="stSidebarNav"] {
-            background-color: transparent !important;
-            padding-top: 2rem;
-        }
-
-        /* Back to Top Button */
-        .back-to-top {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--surface);
-            border: 1px solid var(--primary);
-            color: var(--primary);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 9999;
-            transition: all 0.3s;
-            text-decoration: none !important;
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-        .back-to-top:hover {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 20px var(--primary-glow);
-            transform: translateY(-3px);
-        }
-        </style>
-        <a href="#lagent-discovery" class="back-to-top">↑</a>
-    """, unsafe_allow_html=True)
-
-
 
 def main():
     st.set_page_config(page_title="Web Content & GEO", layout="wide")

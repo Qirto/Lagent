@@ -1,182 +1,14 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import sys
 import os
 import requests
 from dotenv import load_dotenv
 
 # Path setup
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-load_dotenv()
-
-# ──────────────────────────────────────────────
-# THEME (shared)
-# ──────────────────────────────────────────────
-
-def apply_theme():
-    st.markdown("""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700;900&display=swap');
-
-        :root {
-            --primary: #00f3ff;
-            --primary-glow: rgba(0, 243, 255, 0.4);
-            --secondary: #ff00ff;
-            --secondary-glow: rgba(255, 0, 255, 0.4);
-            --accent: #bc13fe;
-            --bg: #09090b; /* Deep dark for neumorphism */
-            --bg-elevated: #111115;
-            --surface: rgba(17, 17, 21, 0.65); /* Glassmorphic base */
-            --border: #27272a;
-            --border-neon: rgba(0, 243, 255, 0.6);
-            --text: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --green: #10b981;
-            --red: #ef4444;
-            --radius: 0px; /* Brutalism */
-            --radius-btn: 2px;
-            --neu-shadow: 6px 6px 12px #040405, -6px -6px 12px #0e0e11;
-            --neu-inset: inset 4px 4px 8px #040405, inset -4px -4px 8px #0e0e11;
-        }
-
-        /* Base App Styling */
-        html, body, [data-testid="stAppViewContainer"],
-        .stApp, [data-testid="stMainBlockContainer"] {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg) !important;
-            background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px; /* Grid for cyberpunk feel */
-            color: var(--text);
-            scroll-behavior: smooth;
-        }
-
-        /* Typography */
-        h1, h2, h3, .sec-title, .brand h1 {
-            font-family: 'Orbitron', sans-serif !important;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        /* Brutalist / Neumorphic Cards */
-        div[data-testid="stVerticalBlockBorderWrapper"] > div {
-            background-color: var(--bg-elevated) !important;
-            border: 2px solid var(--border) !important; /* Brutalism */
-            border-radius: var(--radius) !important;
-            box-shadow: var(--neu-shadow) !important; /* Neumorphism */
-            padding: 1.5rem !important;
-            transition: all 0.3s ease;
-        }
-        
-        div[data-testid="stVerticalBlockBorderWrapper"] > div:hover {
-            border-color: var(--border-neon) !important;
-            box-shadow: 0 0 20px var(--primary-glow), var(--neu-shadow) !important; /* Cyberpunk Neon */
-        }
-
-        /* Inputs & Textareas */
-        .stTextInput input, .stTextArea textarea, .stSelectbox > div[data-baseweb="select"] {
-            background-color: var(--bg) !important;
-            border: 2px solid var(--border) !important;
-            color: var(--text) !important;
-            border-radius: var(--radius) !important;
-            box-shadow: var(--neu-inset) !important; /* Neumorphism inner shadow */
-            font-family: 'JetBrains Mono', monospace !important;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        
-        .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox > div[data-baseweb="select"]:focus-within {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 12px var(--primary-glow), var(--neu-inset) !important;
-            outline: none !important;
-        }
-
-        /* Buttons: Brutalist + Neon + Neumorphism */
-        .stButton > button, [data-testid="baseButton-secondary"] {
-            background-color: var(--bg-elevated) !important;
-            color: var(--primary) !important;
-            border: 2px solid var(--primary) !important;
-            border-radius: var(--radius-btn) !important;
-            text-transform: uppercase;
-            font-family: 'Orbitron', sans-serif !important;
-            font-weight: 700 !important;
-            letter-spacing: 1.5px;
-            box-shadow: var(--neu-shadow) !important;
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-            min-height: 44px; /* Touch target size */
-            padding: 0.5rem 1.5rem !important;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stButton > button:hover {
-            background-color: rgba(0, 243, 255, 0.1) !important;
-            color: var(--primary) !important;
-            box-shadow: 0 0 20px var(--primary-glow), var(--neu-shadow) !important;
-            transform: translateY(-2px);
-            border-color: var(--primary) !important;
-        }
-
-        /* Sidebar - Glassmorphism */
-        [data-testid="stSidebar"] {
-            background-color: rgba(9, 9, 11, 0.75) !important;
-            border-right: 2px solid var(--border-neon) !important;
-            backdrop-filter: blur(24px) saturate(180%) !important; /* Glassmorphism */
-            box-shadow: 5px 0 25px rgba(0, 243, 255, 0.1);
-        }
-        
-        [data-testid="stSidebarNav"] {
-            background: transparent !important;
-            padding-top: 2rem;
-        }
-        
-        [data-testid="stSidebarNav"] li {
-            border-radius: 0;
-            margin-bottom: 5px;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        [data-testid="stSidebarNav"] li:hover {
-            background: rgba(0, 243, 255, 0.05) !important;
-            border: 1px solid var(--primary-glow) !important;
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        [data-testid="stSidebarNav"] li a span {
-            font-family: 'Orbitron', sans-serif !important;
-            text-transform: uppercase;
-            font-size: 0.8rem !important;
-            letter-spacing: 1px;
-        }
-
-        [data-testid="stSidebarNav"] li[data-selected="true"] {
-            background: rgba(0, 243, 255, 0.15) !important;
-            border-left: 5px solid var(--primary) !important;
-        }
-        
-        .sec-title {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;
-            text-transform: uppercase; letter-spacing: 2px;
-        }
-        .sec-desc {
-            font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;
-        }
-        
-        .brand {
-            text-align: center; padding: 1.5rem 0;
-        }
-        .brand h1 {
-            font-family: 'Orbitron', sans-serif !important;
-            font-size: 2.5rem; font-weight: 900; letter-spacing: 8px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        </style>
-        <a href="#lagent-settings" class="back-to-top">↑</a>
-    """, unsafe_allow_html=True)
+from src.theme import apply_theme
 
 
 
@@ -327,6 +159,12 @@ def main():
                     st.session_state.OPENROUTER_MODEL = new_model
                     save_to_env("OPENROUTER_API_KEY", new_key)
                     save_to_env("OPENROUTER_MODEL", new_model)
+                    components.html(f"""
+                    <script>
+                    localStorage.setItem('lagent_openrouter_key', '{new_key}');
+                    localStorage.setItem('lagent_openrouter_model', '{new_model}');
+                    </script>
+                    """, height=0)
                     st.success("OpenRouter settings saved and persisted!")
 
                 if st.button("Test OpenRouter Connection", width='stretch', type="secondary"):
@@ -354,6 +192,11 @@ def main():
                 if st.button("Save Hugging Face Settings", width='stretch'):
                     st.session_state.HF_API_TOKEN = new_hf_token
                     save_to_env("HF_API_TOKEN", new_hf_token)
+                    components.html(f"""
+                    <script>
+                    localStorage.setItem('lagent_hf_token', '{new_hf_token}');
+                    </script>
+                    """, height=0)
                     st.success("Hugging Face token saved and persisted!")
 
                 if st.button("Test Hugging Face Connection", width='stretch', type="secondary"):
