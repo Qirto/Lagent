@@ -43,26 +43,28 @@ def clean_cache():
 def apply_theme():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700;900&display=swap');
 
         :root {
-            --primary: #bc13fe;
-            --primary-glow: rgba(188, 19, 254, 0.4);
-            --secondary: #00f3ff;
-            --secondary-glow: rgba(0, 243, 255, 0.3);
-            --accent: #ff00ff;
-            --bg: #050505;
-            --surface: rgba(16, 16, 24, 0.7);
-            --surface-bright: rgba(26, 26, 36, 0.8);
-            --border: rgba(188, 19, 254, 0.3);
-            --border-bright: rgba(0, 243, 255, 0.5);
-            --text: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-muted: #484f58;
-            --green: #3fb950;
-            --red: #f85149;
-            --radius: 4px;
-            --radius-lg: 8px;
+            --primary: #00f3ff;
+            --primary-glow: rgba(0, 243, 255, 0.4);
+            --secondary: #ff00ff;
+            --secondary-glow: rgba(255, 0, 255, 0.4);
+            --accent: #bc13fe;
+            --bg: #09090b; /* Deep dark for neumorphism */
+            --bg-elevated: #111115;
+            --surface: rgba(17, 17, 21, 0.65); /* Glassmorphic base */
+            --border: #27272a;
+            --border-neon: rgba(0, 243, 255, 0.6);
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --green: #10b981;
+            --red: #ef4444;
+            --radius: 0px; /* Brutalism */
+            --radius-btn: 2px;
+            --neu-shadow: 6px 6px 12px #040405, -6px -6px 12px #0e0e11;
+            --neu-inset: inset 4px 4px 8px #040405, inset -4px -4px 8px #0e0e11;
         }
 
         /* Base App Styling */
@@ -71,64 +73,541 @@ def apply_theme():
             font-family: 'Inter', sans-serif;
             background-color: var(--bg) !important;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 50%),
-                linear-gradient(rgba(188, 19, 254, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(188, 19, 254, 0.02) 1px, transparent 1px);
-            background-size: 100% 100%, 30px 30px, 30px 30px;
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; /* Grid for cyberpunk feel */
             color: var(--text);
+            scroll-behavior: smooth;
         }
 
-        #MainMenu, footer { display: none !important; }
+        /* Typography */
+        h1, h2, h3, .sec-title, .brand h1 {
+            font-family: 'Orbitron', sans-serif !important;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
 
-        /* Sidebar Styling */
+        /* Brutalist / Neumorphic Cards */
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {
+            background-color: var(--bg-elevated) !important;
+            border: 2px solid var(--border) !important; /* Brutalism */
+            border-radius: var(--radius) !important;
+            box-shadow: var(--neu-shadow) !important; /* Neumorphism */
+            padding: 1.5rem !important;
+            transition: all 0.3s ease;
+        }
+        
+        div[data-testid="stVerticalBlockBorderWrapper"] > div:hover {
+            border-color: var(--border-neon) !important;
+            box-shadow: 0 0 20px var(--primary-glow), var(--neu-shadow) !important; /* Cyberpunk Neon */
+        }
+
+        /* Inputs & Textareas */
+        .stTextInput input, .stTextArea textarea, .stSelectbox > div[data-baseweb="select"] {
+            background-color: var(--bg) !important;
+            border: 2px solid var(--border) !important;
+            color: var(--text) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: var(--neu-inset) !important; /* Neumorphism inner shadow */
+            font-family: 'JetBrains Mono', monospace !important;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox > div[data-baseweb="select"]:focus-within {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 12px var(--primary-glow), var(--neu-inset) !important;
+            outline: none !important;
+        }
+
+        /* Buttons: Brutalist + Neon + Neumorphism */
+        .stButton > button, [data-testid="baseButton-secondary"] {
+            background-color: var(--bg-elevated) !important;
+            color: var(--primary) !important;
+            border: 2px solid var(--primary) !important;
+            border-radius: var(--radius-btn) !important;
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif !important;
+            font-weight: 700 !important;
+            letter-spacing: 1.5px;
+            box-shadow: var(--neu-shadow) !important;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+            min-height: 44px; /* Touch target size */
+            padding: 0.5rem 1.5rem !important;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stButton > button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,243,255,0.4), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.5s ease;
+        }
+
+        .stButton > button:hover::before {
+            left: 150%;
+        }
+
+        .stButton > button:hover {
+            background-color: rgba(0, 243, 255, 0.1) !important;
+            color: var(--primary) !important;
+            box-shadow: 0 0 20px var(--primary-glow), var(--neu-shadow) !important;
+            transform: translateY(-2px);
+            border-color: var(--primary) !important;
+        }
+
+        .stButton > button:active {
+            transform: translateY(1px);
+            box-shadow: var(--neu-inset) !important;
+        }
+
+        /* Specific overrides for Ghost / Secondary buttons */
+        .ghost-btn .stButton > button {
+            border-color: var(--text-muted) !important;
+            color: var(--text-secondary) !important;
+            box-shadow: none !important;
+        }
+        .ghost-btn .stButton > button:hover {
+            border-color: var(--secondary) !important;
+            color: var(--secondary) !important;
+            background-color: rgba(255, 0, 255, 0.05) !important;
+            box-shadow: 0 0 15px var(--secondary-glow) !important;
+        }
+
+        /* Sidebar - Glassmorphism */
         [data-testid="stSidebar"] {
-            background-color: rgba(5, 5, 5, 0.95) !important;
-            border-right: 1px solid var(--border) !important;
-            backdrop-filter: blur(15px);
-            box-shadow: 5px 0 15px rgba(188, 19, 254, 0.1);
+            background-color: rgba(9, 9, 11, 0.75) !important;
+            border-right: 2px solid var(--border-neon) !important;
+            backdrop-filter: blur(24px) saturate(180%) !important; /* Glassmorphism */
+            box-shadow: 5px 0 25px rgba(0, 243, 255, 0.1);
         }
+        
         [data-testid="stSidebarNav"] {
-            background-color: transparent !important;
+            background: transparent !important;
             padding-top: 2rem;
         }
+        
         [data-testid="stSidebarNav"] li {
-            margin-bottom: 5px;
-            border-radius: 4px;
+            border-radius: 0;
+            margin-bottom: 2px;
+            transition: all 0.2s;
+        }
+
+        [data-testid="stSidebarNav"] li:hover {
+            background: rgba(0, 243, 255, 0.1) !important;
+            border-left: 4px solid var(--primary) !important;
+            box-shadow: inset 20px 0 20px -20px var(--primary-glow);
+        }
+
+        /* Headers and Typography classes */
+        .sec-title {
+            font-size: 2.2rem;
+            color: var(--text);
+            text-shadow: 0 0 12px rgba(255,255,255,0.2);
+            margin-bottom: 0.2rem;
+            border-bottom: 3px solid var(--border);
+            display: inline-block;
+            padding-bottom: 0.2rem;
+            position: relative;
+        }
+        .sec-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 30%;
+            height: 3px;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .sec-desc {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+            max-width: 800px;
+        }
+        
+        /* Stepper - Cyberpunk / Brutalist */
+        .stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0 3.5rem 0;
+            background: var(--bg-elevated);
+            padding: 1.2rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--neu-shadow);
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: color 0.3s;
+        }
+        .step.active {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+        .step.done {
+            color: var(--secondary);
+            text-shadow: 0 0 10px var(--secondary-glow);
+        }
+        .step-num {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 0; /* Brutalism */
+            border: 2px solid var(--text-muted);
+            margin-right: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 900;
+            background: var(--bg);
+            box-shadow: var(--neu-inset);
             transition: all 0.3s;
         }
-        [data-testid="stSidebarNav"] li:hover {
-            background: rgba(188, 19, 254, 0.1);
-            box-shadow: inset 0 0 10px rgba(188, 19, 254, 0.2);
+        .step.active .step-num {
+            border-color: var(--primary);
+            color: var(--bg);
+            background: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow), var(--neu-shadow);
+        }
+        .step.done .step-num {
+            border-color: var(--secondary);
+            color: var(--secondary);
+            background: rgba(255, 0, 255, 0.1);
+            box-shadow: 0 0 12px var(--secondary-glow);
+        }
+        .step-line {
+            height: 3px;
+            width: 50px;
+            background: var(--border);
+            margin: 0 20px;
+            transition: background 0.3s, box-shadow 0.3s;
+            box-shadow: var(--neu-inset);
+        }
+        .step-line.done {
+            background: var(--secondary);
+            box-shadow: 0 0 10px var(--secondary-glow);
+        }
+
+        /* Card Header */
+        .card-hdr {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+        }
+        .card-hdr::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            margin-right: 10px;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        /* Checkboxes */
+        div[data-testid="stCheckbox"] label span {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        div[data-testid="stCheckbox"] div[role="checkbox"] {
+            border-radius: 0 !important;
+            border: 2px solid var(--border) !important;
+            transition: all 0.2s;
+        }
+        div[data-testid="stCheckbox"] div[role="checkbox"][aria-checked="true"] {
+            background-color: var(--primary) !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        
+        /* File Uploader override */
+        [data-testid="stFileUploader"] > div > div {
+            background-color: rgba(0, 243, 255, 0.03) !important;
+            border: 2px dashed var(--primary) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: var(--neu-inset) !important;
+            transition: all 0.3s;
+            padding: 3rem !important;
+        }
+        [data-testid="stFileUploader"] > div > div:hover {
+            border-color: var(--secondary) !important;
+            background-color: rgba(255, 0, 255, 0.05) !important;
+            box-shadow: 0 0 20px var(--secondary-glow), var(--neu-inset) !important;
+        }
+        [data-testid="stFileUploader"] small {
+            font-family: 'JetBrains Mono', monospace !important;
+            color: var(--primary) !important;
+            font-size: 1rem !important;
+        }
+
+        /* Status & Log Items */
+        .st-item {
+            padding: 12px 18px;
+            margin-bottom: 10px;
+            border-radius: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            border-left: 4px solid var(--border);
+            background: var(--bg-elevated);
+            box-shadow: var(--neu-shadow);
+            transition: all 0.2s;
+        }
+        .st-item:hover {
+            transform: translateX(2px);
+        }
+        .st-item.proc {
+            border-color: var(--primary);
+            color: var(--text);
+            box-shadow: inset 300px 0 100px -100px rgba(0,243,255,0.08), var(--neu-shadow);
+        }
+        .st-item.proc strong {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+        .st-item.ok {
+            border-color: var(--green);
+            color: var(--text);
+            box-shadow: inset 100px 0 50px -50px rgba(16,185,129,0.1), var(--neu-shadow);
+        }
+        .st-item.fail {
+            border-color: var(--red);
+            color: var(--text);
+            box-shadow: inset 100px 0 50px -50px rgba(239,68,68,0.1), var(--neu-shadow);
+        }
+        
+        /* Badges & Tags */
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid var(--primary);
+            border-radius: 0;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary);
+            margin-right: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 5px rgba(0,243,255,0.2);
+        }
+        
+        .price-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--secondary);
+            text-shadow: 0 0 15px var(--secondary-glow);
+            margin: 15px 0;
+            padding: 8px 15px;
+            border: 2px solid var(--secondary);
+            display: inline-block;
+            background: var(--bg);
+            box-shadow: var(--neu-inset);
+            letter-spacing: 2px;
+        }
+        
+        /* File Chip */
+        .file-chip {
+            display: inline-flex;
+            align-items: center;
+            background: var(--bg);
+            border: 1px solid var(--primary);
+            padding: 10px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            box-shadow: 0 0 15px rgba(0,243,255,0.1), var(--neu-inset);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .file-chip strong {
+            color: var(--text);
+            margin-right: 8px;
+        }
+        
+        /* Description Header */
+        .desc-hdr {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--secondary);
+            border-bottom: 2px dashed var(--border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px var(--secondary-glow);
+        }
+
+        /* Description Content */
+        .desc-content {
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: var(--text);
+            background: rgba(0,0,0,0.2);
+            padding: 1.5rem;
+            border-left: 3px solid var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        .desc-content h1, .desc-content h2, .desc-content h3, .desc-content h4 {
+            font-family: Arial, Helvetica, sans-serif !important;
+            color: var(--primary);
+            letter-spacing: normal;
+            text-transform: none;
+            margin-top: 1.2rem;
+            margin-bottom: 0.8rem;
+        }
+
+        /* Result Reference Header */
+        .result-ref {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            position: relative;
+        }
+        .result-ref::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background: var(--secondary);
+            box-shadow: 0 0 10px var(--secondary-glow);
+        }
+        
+        /* Thumbnails & Images */
+        .thumb-btn .stButton > button {
+            padding: 0.2rem !important;
+            min-height: 30px !important;
+            font-size: 0.75rem !important;
+            border-radius: 0 !important;
+            letter-spacing: 0;
+            border-width: 1px !important;
+        }
+        div[data-testid="stImage"] img {
+            border: 2px solid var(--border);
+            border-radius: 0;
+            box-shadow: var(--neu-shadow);
+            transition: all 0.3s;
+        }
+        div[data-testid="stImage"]:hover img {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        /* Alerts */
+        [data-testid="stAlert"] {
+            background-color: var(--bg-elevated) !important;
+            border: 2px solid var(--border);
+            border-radius: 0;
+            box-shadow: var(--neu-inset);
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+        }
+        [data-testid="stAlert"][data-baseweb="notification"] {
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Progress Bar */
+        .stProgress > div > div > div > div {
+            background-color: var(--primary) !important;
+            box-shadow: 0 0 15px var(--primary-glow) !important;
+            border-radius: 0 !important;
+        }
+        .stProgress > div > div {
+            background-color: var(--bg) !important;
+            border-radius: 0 !important;
+            border: 1px solid var(--border);
+            box-shadow: var(--neu-inset);
+            height: 12px !important;
+        }
+
+        /* Hide Default Main Menu */
+        #MainMenu, footer { display: none !important; }
+
+        /* Scrollbar styling for Cyberpunk feel */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 0;
+            border: 1px solid var(--bg);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
         }
 
         /* Back to Top Button */
         .back-to-top {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            bottom: 30px;
+            right: 30px;
             background: var(--surface);
-            border: 1px solid var(--primary);
+            border: 2px solid var(--primary);
             color: var(--primary);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            border-radius: 0; /* Brutalism */
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             z-index: 9999;
-            transition: all 0.3s;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-decoration: none !important;
-            box-shadow: 0 0 10px var(--primary-glow);
+            box-shadow: var(--neu-shadow);
+            backdrop-filter: blur(12px); /* Glassmorphism */
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.2rem;
         }
         .back-to-top:hover {
             background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 20px var(--primary-glow);
-            transform: translateY(-3px);
+            color: var(--bg);
+            box-shadow: 0 0 25px var(--primary-glow);
+            transform: translateY(-5px) scale(1.1);
+            border-color: var(--bg);
         }
         </style>
-        <a href="#lagent-ai" class="back-to-top">↑</a>
+        <a href="#lagent-ai" class="back-to-top" aria-label="Back to top">▲</a>
     """, unsafe_allow_html=True)
 
 
@@ -186,7 +665,7 @@ def view_import():
                 f'<div class="file-chip"><strong>{pdf.name}</strong> &mdash; {size_kb:,.0f} KB ready</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Download", use_container_width=True):
+            if st.button("Upload Catalog", use_container_width=True):
                 with open("temp_catalog.pdf", "wb") as f:
                     f.write(pdf.getvalue())
                 with st.status("Scanning catalog...", expanded=True) as status:
@@ -245,31 +724,14 @@ def view_config():
                 help="The AI will mimic this text's tone and structure when writing descriptions.",
             )
 
-            auto_enhance = st.checkbox(
-                "Auto-enhance images (1024x1024)",
-                value=st.session_state.get("auto_enhance", False),
-                key="auto_enhance",
-                help="Automatically upscale scraped images to 1024x1024.",
-            )
+            st.session_state["auto_enhance"] = True # Force auto-enhance 
             
-            if auto_enhance:
-                enh_engine = st.radio("Engine", ["Local (Fast)", "Cloud (AI)"], horizontal=True, key="enh_engine")
-                if enh_engine == "Local (Fast)":
-                    st.selectbox(
-                        "Enhancement Profile",
-                        ["balanced", "screenshot", "photography", "print", "social"],
-                        index=0,
-                        key="enh_profile",
-                        help="Choose the style of enhancement. 'screenshot' is best for sharp UI/text."
-                    )
-                else:
-                    st.selectbox(
-                        "Cloud Model",
-                        ["falai/topaz-image-upscaler@latest", "infsh/real-esrgan@latest"],
-                        index=0,
-                        key="cloud_model",
-                        help="Professional AI models via inference.sh. Requires INFSH_API_KEY."
-                    )
+            st.markdown(
+                '<div style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem; color: var(--secondary); margin-top: 10px;">'
+                '⚡ Auto-Enhancement Active (Local Lanczos Upscale)'
+                '</div>',
+                unsafe_allow_html=True
+            )
 
             st.checkbox(
                 "Use n8n pipeline",
@@ -410,31 +872,19 @@ def view_exec():
                     log.markdown("".join(entries_enh), unsafe_allow_html=True)
 
                     enhanced_imgs = []
-                    # If n8n is also enabled, we could potentially get enhanced images FROM n8n
-                    # but for now let's stick to local enhancement or n8n enhancement logic
                     
-                    profile = st.session_state.get("enh_profile", "balanced")
-                    engine = st.session_state.get("enh_engine", "Local (Fast)")
-                    cloud_model = st.session_state.get("cloud_model", "falai/topaz-image-upscaler@latest")
+                    profile = "balanced"
+                    engine = "Local (Fast)"
                     
                     for img_url in web["images"][:6]:
                         enh_data = None
                         if bridge and bridge.is_configured:
-                            # Try n8n first if selected
                             enh_data = bridge.send_image_for_enhancement(img_url, ref, web.get("source", ""))
                         
                         if not enh_data and enhancer:
-                            if engine == "Cloud (AI)":
-                                # Try cloud
-                                enh = enhancer.enhance_cloud(img_url, app_id=cloud_model)
-                                if enh:
-                                    enh_data = enhancer.to_bytes(enh, fmt="PNG")
-                            
-                            # Fallback to local if cloud fails or Local is selected
-                            if not enh_data:
-                                enh = enhancer.enhance_from_url(img_url, profile=profile)
-                                if enh:
-                                    enh_data = enhancer.to_bytes(enh, fmt="PNG")
+                            enh = enhancer.enhance_from_url(img_url, profile=profile)
+                            if enh:
+                                enh_data = enhancer.to_bytes(enh, fmt="PNG")
                         
                         if enh_data:
                             enhanced_imgs.append(enh_data)
@@ -442,15 +892,10 @@ def view_exec():
                     web["enhanced_images"] = enhanced_imgs
 
                 desc = ""
-                for chunk in writer.write_description_stream(web, st.session_state.active_dna):
+                # Use local description writer with category
+                category_name = st.session_state.get("_active_cat", "GENERAL")
+                for chunk in writer.write_description_stream(web, category=category_name):
                     desc += chunk
-                
-                # --- AI FALLBACK: If API fails, use raw site description ---
-                if not desc or "❌ ERROR" in desc or len(desc) < 50:
-                    print(f"[LOG]   AI failed or returned error. Falling back to site description for {ref}")
-                    desc = web.get("specs", "Description non disponible.")
-                    if web.get("url"):
-                        desc += f"\n\n🔗 **Source:** [{web.get('source', 'Site Web')}]({web.get('url')})"
 
                 st.session_state.out.append({"id": ref, "data": web, "desc": desc})
                 st.session_state.img_ptr[ref] = 0
@@ -492,11 +937,9 @@ def view_results():
     # ── Action bar ──
     c1, c2, _ = st.columns([1, 1.2, 4])
     with c1:
-        st.markdown('<div class="ghost-btn">', unsafe_allow_html=True)
-        if st.button("New Batch", use_container_width=True, key="btn_new"):
+        if st.button("New Batch", use_container_width=True, key="btn_new", type="secondary"):
             st.session_state.ui = "config"
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
     with c2:
         if ok > 0:
             zip_data = _prepare_download_zip()
@@ -506,7 +949,8 @@ def view_results():
                 file_name=f"product_export_{int(time.time())}.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="btn_download_zip"
+                key="btn_download_zip",
+                type="primary"
             )
 
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
@@ -554,19 +998,21 @@ def view_results():
                     # Thumbnail navigation
                     if len(imgs) > 1:
                         max_thumbs = min(len(imgs), 6)
+                        st.markdown('<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; font-family: \'JetBrains Mono\', monospace;">SELECT VIEW:</div>', unsafe_allow_html=True)
                         thumb_cols = st.columns(max_thumbs)
                         for idx in range(max_thumbs):
                             with thumb_cols[idx]:
                                 is_active = idx == ptr
-                                st.markdown('<div class="thumb-btn">', unsafe_allow_html=True)
+                                btn_type = "primary" if is_active else "secondary"
+                                label = f"IMG {idx + 1}"
                                 if st.button(
-                                    f"View {idx + 1}" if not is_active else f"[{idx + 1}]",
+                                    label,
                                     key=f"t_{ref}_{idx}",
                                     use_container_width=True,
+                                    type=btn_type
                                 ):
                                     st.session_state.img_ptr[ref] = idx
                                     st.rerun()
-                                st.markdown('</div>', unsafe_allow_html=True)
 
                 st.markdown(f'<div class="price-tag">{res["price"]}</div>', unsafe_allow_html=True)
                 
@@ -593,44 +1039,45 @@ def view_results():
             # ── Description ──
             with desc_col:
                 st.markdown('<div class="desc-hdr">Generated Description</div>', unsafe_allow_html=True)
-                st.markdown(item["desc"])
+                
+                # Use simple font for description readability (System sans-serif)
+                st.markdown(f'<div class="desc-content">\n\n{item["desc"]}\n\n</div>', unsafe_allow_html=True)
 
-                st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-
-                dl1, dl2, dl3 = st.columns([1, 1, 1.2])
+                dl1, dl2, dl3 = st.columns([1, 1, 1])
                 with dl1:
                     st.download_button(
-                        "Text",
+                        "Download Text (.txt)",
                         data=item["desc"],
                         file_name=f"{ref}_description.txt",
                         mime="text/plain",
                         use_container_width=True,
                         key=f"dl_{ref}",
+                        type="secondary"
                     )
                 with dl2:
                     st.download_button(
-                        "Markdown",
+                        "Download Markdown (.md)",
                         data=item["desc"],
                         file_name=f"{ref}_description.md",
                         mime="text/markdown",
                         use_container_width=True,
                         key=f"dlmd_{ref}",
+                        type="secondary"
                     )
                 with dl3:
                     if has_enhanced:
                         ptr = st.session_state.img_ptr.get(ref, 0)
                         st.download_button(
-                            "Enhanced Image",
+                            "Download Enhanced Image (.png)",
                             data=res["enhanced_images"][ptr],
                             file_name=f"{ref}_enhanced_{ptr+1}.png",
                             mime="image/png",
                             use_container_width=True,
                             key=f"dlimg_{ref}",
+                            type="primary"
                         )
                     else:
-                        st.markdown('<div class="ghost-btn">', unsafe_allow_html=True)
                         st.button("No Enhanced Img", disabled=True, use_container_width=True, key=f"noimg_{ref}")
-                        st.markdown('</div>', unsafe_allow_html=True)
 
 
 
@@ -694,10 +1141,12 @@ def main():
 
     # Brand header
     st.markdown(
-        '<div class="brand" id="lagent-ai">'
-        "<h1>Lagent<b>AI</b></h1>"
-        '<p class="sub">Catalog Processing Agent</p>'
-        "</div>",
+        '<div class="brand" id="lagent-ai" style="text-align: center; margin-bottom: 2rem; padding: 2rem; border-bottom: 2px solid var(--border); box-shadow: var(--neu-shadow); background: var(--bg-elevated);">'
+        '<h1 style="font-size: 3.5rem; margin-bottom: 0; color: #f8fafc; text-shadow: 0 0 15px rgba(0, 243, 255, 0.4); font-family: \'Orbitron\', sans-serif; letter-spacing: 2px;">'
+        'LAGENT<b style="color: #00f3ff;">//AI</b></h1>'
+        '<p class="sub" style="font-family: \'JetBrains Mono\', monospace; color: #ff00ff; font-size: 1rem; letter-spacing: 4px; text-transform: uppercase; margin-top: 5px; text-shadow: 0 0 8px rgba(255, 0, 255, 0.4);">'
+        '>> Catalog_Processing_Agent_v2.0</p>'
+        '</div>',
         unsafe_allow_html=True,
     )
 

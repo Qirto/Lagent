@@ -1,136 +1,53 @@
-import requests
-import json
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+import re
 
 class DescriptionWriter:
-    """Cloud-only generator using OpenRouter with reasoning logic."""
+    """Local generator that creates consistent, category-based descriptions without AI API."""
 
     def __init__(self, api_key=None, model=None):
-        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
-        self.model = model or "openrouter/free"
-        self.url = "https://openrouter.ai/api/v1/chat/completions"
+        pass
 
-    def write_description_stream(self, product_info, style_example=None):
-        """Generates content using user-provided multi-call reasoning logic."""
+    def write_description_stream(self, product_info, category="GENERAL"):
+        """Generates content locally based on product category, bypassing the AI API."""
         
         # LOG: INIT
-        print(f"[LOG] >>> INITIALIZING SYNTHESIS FOR: {product_info.get('title')}")
+        print(f"[LOG] >>> INITIALIZING LOCAL SYNTHESIS FOR: {product_info.get('title')}")
         
-        if not self.api_key:
-            print("[LOG] !!! ERROR: API KEY MISSING !!!")
-            yield "❌ ERROR: API KEY MISSING"
-            return
+        # Clean up scraped specs text
+        raw_specs = product_info.get('specs', '')
+        specs_clean = re.sub(r'\n{3,}', '\n\n', raw_specs).strip()
+        if not specs_clean:
+            specs_clean = "Aucune description détaillée n'est disponible pour le moment."
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:8501",
-            "X-Title": "NeuralAgent",
-        }
+        title = product_info.get('title', 'Produit')
+        price = product_info.get('price', 'N/A')
+        sku = product_info.get('sku', 'N/A')
+        url = product_info.get('url', '#')
+        source = product_info.get('source', 'Site Web')
 
-        # LOG: CONSTRUCTING PROMPT
-        prompt = self._build_prompt(product_info, style_example)
-        print("[LOG] >>> NEURAL PROMPT CONSTRUCTED.")
-
-        # LOG: HANDSHAKE
-        print(f"[LOG] >>> DISPATCHING TO NODE: {self.model} (REASONING: ENABLED)")
+        # Formatting based on category
+        desc = f"## {category.upper()}\n\n"
+        desc += f"### {title}\n\n"
         
-        # Using the EXACT structure from user's example
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "reasoning": {"enabled": True},
-            "stream": True
-        }
+        desc += "#### Vue d'ensemble\n"
+        desc += f"Ce produit de la gamme **{category}** est conçu pour offrir des performances optimales. "
+        desc += f"Il est référencé sous le code **{sku}**.\n\n"
+        
+        desc += "#### Spécifications Techniques\n"
+        desc += f"{specs_clean}\n\n"
+        
+        desc += "#### Résumé des détails\n"
+        desc += f"- **Catégorie** : {category}\n"
+        desc += f"- **Référence / SKU** : {sku}\n"
+        desc += f"- **Prix constaté** : {price}\n"
+        desc += f"- **Source principale** : [{source}]({url})\n\n"
+        
+        desc += "---\n\n"
+        desc += "*Note : Description générée automatiquement à partir des données extraites du site marchand.*"
 
-        try:
-            # LOG: POST REQUEST
-            print("[LOG] >>> SENDING REQUEST PACKET...")
-            response = requests.post(
-                url=self.url,
-                headers=headers,
-                data=json.dumps(payload),
-                stream=True,
-                timeout=60
-            )
-            
-            # LOG: STATUS
-            print(f"[LOG] >>> STATUS CODE: {response.status_code}")
-            
-            if response.status_code == 200:
-                print("[LOG] >>> CONNECTION ESTABLISHED. STREAMING DNA...")
-                full_content = ""
-                for line in response.iter_lines():
-                    if line:
-                        line_text = line.decode('utf-8')
-                        if line_text.startswith("data: "):
-                            data_str = line_text[6:]
-                            if data_str == "[DONE]": 
-                                print("[LOG] >>> PACKET STREAM FINISHED.")
-                                break
-                            try:
-                                chunk = json.loads(data_str)
-                                delta = chunk['choices'][0]['delta'].get('content', '')
-                                if delta:
-                                    full_content += delta
-                                    yield delta
-                            except (KeyError, json.JSONDecodeError):
-                                continue
-                
-                print(f"[LOG] >>> SYNTHESIS COMPLETE. {len(full_content)} chars generated.")
-                source_url = product_info.get('url')
-                if source_url:
-                    yield f"\n\n🔗 **Source:** [{product_info.get('source', 'Site Web')}]({source_url})"
-            else:
-                err_msg = response.text
-                print(f"[LOG] !!! API REJECTION: {response.status_code} - {err_msg} !!!")
-                if response.status_code == 401:
-                    yield "❌ AUTH ERROR: Invalid or expired API key. Go to https://openrouter.ai/keys and generate a new key, then update your .env file."
-                elif response.status_code == 429:
-                    yield "❌ RATE LIMIT: Too many requests. Wait a moment and retry."
-                else:
-                    yield f"❌ API_ERROR_{response.status_code}: {err_msg}"
-                
-        except Exception as e:
-            print(f"[LOG] !!! NETWORK CRASH: {e} !!!")
-            yield f"❌ NETWORK_ERROR: {e}"
-
-    def _build_prompt(self, info, style):
-        dna = style if style else "Technical marketing with a focus on SEO and AI discovery (GEO)."
-        return f"""
-Act as a professional technical copywriter and SEO/GEO specialist.
-Style to follow: {dna}
-Language: French.
-
-Product: {info.get('title')}
-Price: {info.get('price')}
-Specs: {info.get('specs')}
-
-Your goal is to create content optimized for both Google (SEO) and AI discovery engines like Perplexity/ChatGPT (GEO).
-
-STRUCTURE:
-1. TL;DR Section: 3 concise bullet points summarizing the primary value. (Start with "## TL;DR")
-2. Product Overview: Narrative description focusing on problem/solution.
-3. Key Features List: Bullet points with specific technical advantages.
-4. Specs Table: Clean markdown table.
-5. FAQ Section: 3 common questions and direct answers about this product. (Start with "## FAQ")
-
-GUIDELINES:
-- Use clear, declarative statements.
-- Ensure stand-alone sections that AI can quote.
-- Include a definition box "Qu'est-ce que [Product Name]?"
-- Optimize for citations by being factual and direct.
-
-Synthesize:
-"""
+        # Simulate streaming for the UI
+        chunk_size = 50
+        for i in range(0, len(desc), chunk_size):
+            yield desc[i:i+chunk_size]
 
 if __name__ == "__main__":
     print("[LOG] DescriptionWriter Node Active.")

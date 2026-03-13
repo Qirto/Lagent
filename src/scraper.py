@@ -1,10 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
-import os
-import io
 import re
 from urllib.parse import quote
-from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -71,28 +68,47 @@ class TunisianScraper:
         return cleaned
 
     def _verify_match(self, ref, color, details):
-        """Strictly verifies if the product matches the Reference."""
-        def strict_normalize(s):
-            return re.sub(r'[^A-Z0-9-]', '', str(s).upper())
+        """Leniently verifies if the product matches the Reference or Title."""
+        def normalize(s):
+            return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
-        clean_sku = strict_normalize(details.get('sku', ''))
-        clean_ref = strict_normalize(ref)
+        clean_sku = normalize(details.get('sku', ''))
+        clean_ref = normalize(ref)
 
-        if clean_ref != clean_sku:
-            clean_title = details['title'].upper().replace("SOG", "SPIRIT OF GAMER")
-            if not re.search(rf'\b{re.escape(clean_ref)}\b', clean_title):
-                return False
+        # 1. Exact SKU match after stripping non-alphanumeric
+        if clean_ref and clean_sku and (clean_ref in clean_sku or clean_sku in clean_ref):
+            pass # SKU matches
+        else:
+            # 2. Check if reference is in the title
+            clean_title = details.get('title', '').upper()
+            
+            # SOG alias handling
+            ref_aliased = clean_ref.replace("SOG", "SPIRITOFGAMER")
+            title_aliased = normalize(clean_title).replace("SOG", "SPIRITOFGAMER")
 
+            if clean_ref not in normalize(clean_title) and ref_aliased not in title_aliased:
+                # 3. Fuzzy split check (if ref is "PRO X", check "PRO" and "X")
+                ref_parts = [normalize(p) for p in str(ref).split() if normalize(p)]
+                if not ref_parts or not all(p in normalize(clean_title) for p in ref_parts):
+                    return False
+
+        # Color match if specified
         if color:
             c_upper = color.upper()
-            search_space = (details['title'] + " " + details['specs']).upper()
+            search_space = (str(details.get('title', '')) + " " + str(details.get('specs', ''))).upper()
             color_variants = [c_upper]
             if c_upper == "NOIR":
-                color_variants.append("BLACK")
-            if c_upper == "BLANC":
-                color_variants.extend(["WHITE", "ARTIC", "SNOW"])
+                color_variants.extend(["BLACK", "BLK"])
+            elif c_upper == "BLANC":
+                color_variants.extend(["WHITE", "WHT", "ARTIC", "SNOW"])
+            elif c_upper == "ROUGE":
+                color_variants.extend(["RED"])
+            elif c_upper == "BLEU":
+                color_variants.extend(["BLUE"])
+                
             if not any(v in search_space for v in color_variants):
                 return False
+                
         return True
 
     # ──────────────────────────────────────────
@@ -146,8 +162,18 @@ class TunisianScraper:
             title_el = psoup.select_one(title_sel)
             title = title_el.get_text(strip=True) if title_el else ""
 
+            # Try to find price more robustly
+            price_val = "N/A"
             price_el = psoup.select_one(price_sel)
-            price = self.format_price(price_el.get_text(strip=True)) if price_el else "N/A"
+            if price_el:
+                price_val = price_el.get_text(strip=True)
+            else:
+                meta_price = psoup.find(itemprop="price")
+                if meta_price:
+                    content = meta_price.get("content")
+                    price_val = content if content else meta_price.get_text(strip=True)
+
+            price = self.format_price(price_val) if price_val != "N/A" else "N/A"
 
             specs_el = psoup.select_one(specs_sel)
             specs = specs_el.get_text(strip=True) if specs_el else ""
@@ -211,12 +237,22 @@ class TunisianScraper:
             title_el = psoup.select_one(".page-title")
             title = title_el.get_text(strip=True) if title_el else ""
 
-            price_el = (
-                psoup.select_one("[data-price-type='finalPrice'] .price")
-                or psoup.select_one(".price-wrapper .price")
-                or psoup.select_one(".price")
-            )
-            price = self.format_price(price_el.get_text(strip=True)) if price_el else "N/A"
+            # More robust price extraction for MyTek
+            price_val = "N/A"
+            price_attr_el = psoup.find(attrs={"data-price-amount": True})
+            if price_attr_el:
+                price_val = price_attr_el.get('data-price-amount', '')
+            else:
+                price_el = (
+                    psoup.select_one("[data-price-type='finalPrice'] .price")
+                    or psoup.select_one(".price-wrapper .price")
+                    or psoup.select_one(".price")
+                )
+                if price_el:
+                    price_val = price_el.get_text(strip=True)
+
+            # Re-format price safely
+            price = self.format_price(price_val) if price_val != "N/A" else "N/A"
 
             specs_el = psoup.select_one("#description") or psoup.select_one(".product-info-main")
             specs = specs_el.get_text(strip=True) if specs_el else ""
@@ -256,6 +292,10 @@ class TunisianScraper:
             base_url="https://www.wiki.tn",
             source_name="Wiki",
             ref=ref, color=color,
+            search_path="/recherche?controller=search&search_query={query}",
+            item_sel=".ajax_block_product, .product-miniature",
+            link_sel="a.product-name, .product-title a",
+            price_sel=".price.product-price, .current-price, .price"
         )
 
     def search_megapc(self, ref, color=""):
@@ -339,7 +379,7 @@ class TunisianScraper:
 
         # --- FALLBACK: Search "Any Website" via Google if not found on primary sites ---
         if not results:
-            print(f"[LOG]   Not found on primary sites. Trying global search fallback...")
+            print("[LOG]   Not found on primary sites. Trying global search fallback...")
             global_res = self.search_global(ref, color)
             if global_res:
                 results.append(global_res)

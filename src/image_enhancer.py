@@ -1,7 +1,7 @@
 import io
 import os
 import requests
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageFilter
 
 
 try:
@@ -115,8 +115,8 @@ class ImageEnhancer:
 
     def enhance(self, img, profile="balanced"):
         """
-        Refined enhancement pipeline with specialized profiles.
-        Focuses on clarity and natural look, avoiding over-sharpening.
+        Refined enhancement pipeline using AdvancedImageEnhancer logic if available.
+        Focuses on clean upscaling without destructive cropping.
         """
         if not isinstance(img, Image.Image):
             return None
@@ -125,72 +125,81 @@ class ImageEnhancer:
         orig_w, orig_h = img.size
         target_w, target_h = self.target_size
         
-        print(f"[LOG] Enhancing ({profile}): {orig_w}x{orig_h} -> {target_w}x{target_h}")
+        print(f"[LOG] Enhancing: {orig_w}x{orig_h} -> {target_w}x{target_h}")
 
-        # --- Profile Specific Configurations ---
-        # Values tuned for clarity without artifacts
-        cfg_map = {
-            "balanced":    {"denoise": True,  "sharp": 1.05, "contrast": 1.02, "unsharp_r": 0.5, "unsharp_p": 100},
-            "screenshot":  {"denoise": False, "sharp": 1.15, "contrast": 1.05, "unsharp_r": 1.0, "unsharp_p": 120},
-            "photography": {"denoise": True,  "sharp": 1.0,  "contrast": 1.0,  "unsharp_r": 0.3, "unsharp_p": 80},
-            "print":       {"denoise": True,  "sharp": 1.2,  "contrast": 1.1,  "unsharp_r": 1.2, "unsharp_p": 140},
-            "social":      {"denoise": True,  "sharp": 1.1,  "contrast": 1.05, "unsharp_r": 0.8, "unsharp_p": 100},
-        }
-        cfg = cfg_map.get(profile, cfg_map["balanced"])
+        try:
+            # Try to use the advanced image enhancer
+            import cv2
+            import numpy as np
+            import sys
+            import os
+            
+            # Make sure we can import advanced_enhancer
+            sys.path.append(os.path.dirname(__file__))
+            from advanced_enhancer import AdvancedImageEnhancer, EnhancementConfig, EnhancementMode
+            
+            # Convert PIL Image to OpenCV format (BGR)
+            open_cv_image = np.array(img)
+            # Convert RGB to BGR 
+            open_cv_image = open_cv_image[:, :, ::-1].copy()
+            
+            # Use advanced enhancer config
+            config = EnhancementConfig(
+                target_size=self.target_size,
+                mode=EnhancementMode.NATURAL,
+                denoise_strength=2.0,
+                sharpening_strength=1.1,
+            )
+            adv_enhancer = AdvancedImageEnhancer(config=config)
+            
+            # Process using advanced methods
+            # Use the correct pipeline method
+            result = adv_enhancer.process_image_array(open_cv_image)
+            if result is not None:
+                # Convert back to PIL
+                enhanced_rgb = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(enhanced_rgb)
+                print("[LOG] Advanced enhancement successful.")
+                return img
+                
+        except ImportError as e:
+            print(f"[LOG] AdvancedImageEnhancer not fully available, using standard PIL pipeline. ({e})")
+        except Exception as e:
+            print(f"[LOG] Error in advanced enhancement: {e}. Falling back to standard PIL pipeline.")
 
-        # Step 1: Subtle noise reduction for low-res sources
-        if cfg["denoise"] or analysis["is_low_res"]:
-            # SMOOTH is less aggressive than SMOOTH_MORE
-            img = img.filter(ImageFilter.SMOOTH)
-        
-        # Step 2: Multi-stage upscale (Super-Sampling)
-        # Scale to 1.5x target instead of 2x to reduce blur from extreme downscaling later
-        mid_w, mid_h = int(target_w * 1.5), int(target_h * 1.5)
-        img = img.resize((mid_w, mid_h), LANCZOS)
-        
-        # Step 3: Targeted Sharpening (Unsharp Mask)
-        # Using smaller radius and lower percent for natural clarity
-        img = img.filter(ImageFilter.UnsharpMask(radius=cfg["unsharp_r"], percent=cfg["unsharp_p"], threshold=3))
-        
-        if profile == "screenshot":
-            # DETAIL adds local contrast without haloing too much
-            img = img.filter(ImageFilter.DETAIL)
-
-        # Step 4: Visual optimization
-        img = ImageEnhance.Contrast(img).enhance(cfg["contrast"])
-        img = ImageEnhance.Sharpness(img).enhance(cfg["sharp"])
-        img = ImageEnhance.Color(img).enhance(1.02) # Very subtle color boost
-
-        # Step 5: Final resize to target with center crop
-        img = self._resize_cover(img, self.target_size)
-        
-        # Step 6: Final crispness pass (Removed EDGE_ENHANCE as it creates halos)
-        # Instead, use a very subtle sharpen on the final size
-        img = img.filter(ImageFilter.SHARPEN) if profile == "screenshot" else img
+        # Step 1: Clean upscale using LANCZOS
+        # We don't want to over-filter as it causes artifacts.
+        if orig_w < target_w or orig_h < target_h:
+            img = self._resize_contain(img, self.target_size)
+        else:
+            # If it's already larger, just downsample smoothly
+            img.thumbnail(self.target_size, LANCZOS)
+            img = self._resize_contain(img, self.target_size)
+            
+        # Very light sharpening to recover edges lost in resize
+        img = img.filter(ImageFilter.UnsharpMask(radius=0.5, percent=50, threshold=5))
 
         return img
 
-    def _resize_cover(self, img, target_size):
+    def _resize_contain(self, img, target_size, bg_color=(255, 255, 255)):
         """
-        Resize to fill the target size while maintaining aspect ratio,
-        then center-crop to exact dimensions. Produces clean square output.
+        Resize to fit within target_size while maintaining aspect ratio,
+        then pad the rest with background color.
+        Prevents cutting off product edges (unlike center crop).
         """
         tw, th = target_size
+        img.thumbnail((tw, th), LANCZOS)
+        
         iw, ih = img.size
+        # Create a new image with the target size and background color
+        new_img = Image.new("RGB", (tw, th), bg_color)
+        
+        # Paste the resized image into the center
+        left = (tw - iw) // 2
+        top = (th - ih) // 2
+        new_img.paste(img, (left, top))
 
-        # Calculate scale to cover
-        scale = max(tw / iw, th / ih)
-        new_w = int(iw * scale)
-        new_h = int(ih * scale)
-
-        img = img.resize((new_w, new_h), LANCZOS)
-
-        # Center crop
-        left = (new_w - tw) // 2
-        top = (new_h - th) // 2
-        img = img.crop((left, top, left + tw, top + th))
-
-        return img
+        return new_img
 
     def to_bytes(self, img, fmt="PNG", quality=95):
         """Convert a PIL Image to bytes."""
