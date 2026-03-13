@@ -1,5 +1,4 @@
 import pdfplumber
-import os
 import re
 
 class ProductPDFExtractor:

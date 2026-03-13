@@ -2,7 +2,6 @@ import streamlit as st
 import sys
 import os
 import io
-import time
 import zipfile
 import requests
 from PIL import Image
@@ -13,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 try:
     from image_enhancer import ImageEnhancer
-    from n8n_bridge import N8NBridge
     HAS_MODULES = True
 except Exception as e:
     HAS_MODULES = False

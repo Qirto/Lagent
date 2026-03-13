@@ -1,6 +1,5 @@
 import requests
 import json
-import io
 import base64
 import os
 from dotenv import load_dotenv
@@ -225,7 +224,7 @@ def create_enhancement_api():
         import sys
         sys.path.append(os.path.dirname(__file__))
         from image_enhancer import ImageEnhancer
-        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from http.server import BaseHTTPRequestHandler
 
     enhancer = ImageEnhancer()
 
