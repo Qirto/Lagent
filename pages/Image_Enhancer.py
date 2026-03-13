@@ -182,21 +182,21 @@ def main():
         )
 
     with c_cfg:
-        st.markdown('<div class="card-hdr">AI Configuration (BYOK)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-hdr">AI Configuration</div>', unsafe_allow_html=True)
         
-        hf_token = st.text_input(
-            "HF Access Token", 
-            value=st.session_state.HF_API_TOKEN, 
-            type="password",
-            help="Free token from https://huggingface.co/settings/tokens"
-        )
-        st.session_state.HF_API_TOKEN = hf_token
+        # Pull token from session/env instead of input
+        hf_token = st.session_state.get("HF_API_TOKEN") or os.getenv("HF_API_TOKEN")
+        
+        if hf_token:
+            st.success("Hugging Face Token Active (from Settings)")
+        else:
+            st.warning("HF Token missing. Go to Settings to add it.")
 
         output_fmt = st.selectbox("Output Format", ["PNG", "JPEG", "WEBP"])
 
-        if st.button("✨ Deep AI Upscale All", use_container_width=True) and files:
+        if st.button("✨ Deep AI Enhance All", use_container_width=True) and files:
             if not hf_token:
-                st.error("Please provide a Hugging Face Token.")
+                st.error("Please provide a Hugging Face Token in the Settings page.")
             else:
                 bar = st.progress(0)
                 status_box = st.empty()
@@ -206,7 +206,7 @@ def main():
                     raw = f.getvalue()
                     orig_img = Image.open(io.BytesIO(raw)).convert("RGB")
                     
-                    status_box.info(f"Processing {f.name} via Hugging Face SwinIR...")
+                    status_box.info(f"Processing {f.name} via Deep AI (4x Upscale)...")
                     
                     # Call HF API
                     enhanced_img = enhancer.enhance_pil(orig_img, token=hf_token)
@@ -216,7 +216,7 @@ def main():
                     
                     bar.progress((i + 1) / len(files))
                 
-                status_box.success("AI Enhancement complete!")
+                status_box.success("4x Deep AI Enhancement complete!")
                 st.session_state.enh_pairs = pairs
                 st.rerun()
 
