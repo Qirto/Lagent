@@ -191,14 +191,40 @@ def apply_theme():
         
         [data-testid="stSidebarNav"] li {
             border-radius: 0;
-            margin-bottom: 2px;
+            margin-bottom: 5px;
             transition: all 0.2s;
+            border: 1px solid transparent;
         }
 
         [data-testid="stSidebarNav"] li:hover {
-            background: rgba(0, 243, 255, 0.1) !important;
-            border-left: 4px solid var(--primary) !important;
-            box-shadow: inset 20px 0 20px -20px var(--primary-glow);
+            background: rgba(0, 243, 255, 0.05) !important;
+            border: 1px solid var(--primary-glow) !important;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        [data-testid="stSidebarNav"] li a span {
+            font-family: 'Orbitron', sans-serif !important;
+            text-transform: uppercase;
+            font-size: 0.8rem !important;
+            letter-spacing: 1px;
+        }
+
+        [data-testid="stSidebarNav"] li[data-selected="true"] {
+            background: rgba(0, 243, 255, 0.15) !important;
+            border-left: 5px solid var(--primary) !important;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        /* Scanline effect for sidebar */
+        [data-testid="stSidebar"]::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
         }
 
         /* Headers and Typography classes */
@@ -666,7 +692,7 @@ def view_import():
                 f'<div class="file-chip"><strong>{pdf.name}</strong> &mdash; {size_kb:,.0f} KB ready</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Upload Catalog", use_container_width=True):
+            if st.button("Upload Catalog", width="stretch"):
                 with open("temp_catalog.pdf", "wb") as f:
                     f.write(pdf.getvalue())
                 with st.status("Scanning catalog...", expanded=True) as status:
@@ -727,34 +753,23 @@ def view_config():
 
             # ── Image Enhancement Toggle ──
             st.divider()
-            st.markdown('<div style="font-family: \'Orbitron\', sans-serif; font-size: 0.9rem; margin-bottom: 10px;">Enhancement Engine</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-family: \'Orbitron\', sans-serif; font-size: 0.9rem; margin-bottom: 10px;">Deep AI Enhancement</div>', unsafe_allow_html=True)
             
-            enh_type = st.radio(
-                "Select Engine",
-                ["Fast Local (OpenCV)", "Deep AI (Hugging Face)"],
-                index=0,
-                key="enh_type_radio",
-                help="Deep AI provides professional quality but is slower and requires an API token."
+            st.session_state["auto_enhance"] = st.checkbox(
+                "Enable Hugging Face AI Upscale",
+                value=st.session_state.get("auto_enhance", True),
+                help="Deep AI provides professional quality using Hugging Face SwinIR 4x."
             )
-            st.session_state["auto_enhance"] = True
-            st.session_state["hf_active"] = (enh_type == "Deep AI (Hugging Face)")
+            st.session_state["hf_active"] = st.session_state["auto_enhance"]
 
-            if st.session_state["hf_active"]:
-                st.session_state["HF_API_TOKEN"] = st.text_input(
-                    "HF API Token (BYOK)",
-                    value=st.session_state.get("HF_API_TOKEN", ""),
-                    type="password",
-                    help="Paste your free Hugging Face token here."
-                )
-                if not st.session_state["HF_API_TOKEN"]:
-                    st.warning("Please enter your HF Token to use Deep AI.")
-            else:
-                st.markdown(
-                    '<div style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem; color: var(--secondary); margin-top: 5px;">'
-                    '⚡ Fast Local Mode Active (LANCZOS/OpenCV)'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
+            if st.session_state["auto_enhance"]:
+                hf_token = st.session_state.get("HF_API_TOKEN") or os.getenv("HF_API_TOKEN")
+                if not hf_token:
+                    st.warning("HF Token missing. Go to Settings to add it.")
+                else:
+                    st.success("Hugging Face AI Active")
+            
+            st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
             st.checkbox(
                 "Use n8n pipeline",
@@ -765,7 +780,7 @@ def view_config():
 
             st.markdown("<div style='height:0.25rem'></div>", unsafe_allow_html=True)
             st.markdown('<div class="ghost-btn">', unsafe_allow_html=True)
-            if st.button("Back to Upload", use_container_width=True, key="btn_back"):
+            if st.button("Back to Upload", width='stretch', key="btn_back"):
                 clean_cache()
                 st.session_state.ui = "import"
                 st.rerun()
@@ -815,7 +830,7 @@ def view_config():
                     if targets:
                         if st.button(
                             f"Generate Descriptions ({len(targets)})",
-                            use_container_width=True,
+                            width='stretch',
                             key="btn_synth",
                         ):
                             st.session_state.out = []
@@ -902,27 +917,24 @@ def view_exec():
                     
                     for img_url in web["images"][:6]:
                         enh_data = None
-                        if bridge and bridge.is_configured:
-                            enh_data = bridge.send_image_for_enhancement(img_url, ref, web.get("source", ""))
                         
-                        if not enh_data and enhancer:
+                        if enhancer:
                             if hf_active and hf_token:
                                 # Deep AI Mode: We need to handle the generator for pacing messages
                                 result_gen = enhancer.enhance_hf_api(img_url, hf_token)
                                 
                                 # Since it might yield dicts for waiting or return an Image
                                 for res_packet in result_gen:
-                                    if isinstance(res_packet, dict) and res_packet.get("status") == "waiting":
-                                        waiting_box.warning(res_packet["msg"])
-                                    elif not isinstance(res_packet, dict):
+                                    if isinstance(res_packet, dict):
+                                        if res_packet.get("status") == "waiting":
+                                            waiting_box.warning(res_packet["msg"])
+                                        elif res_packet.get("status") == "back":
+                                            waiting_box.success(res_packet["msg"])
+                                            time.sleep(1)
+                                    elif res_packet is not None:
                                         # It's the PIL image
                                         enh_data = enhancer.to_bytes(res_packet, fmt="PNG")
                                         waiting_box.empty() # Clear waiting msg
-                            else:
-                                # Fast Local Mode
-                                enh = enhancer._local_enhance(img_url)
-                                if enh:
-                                    enh_data = enhancer.to_bytes(enh, fmt="PNG")
                         
                         if enh_data:
                             enhanced_imgs.append(enh_data)
@@ -976,7 +988,7 @@ def view_results():
     # ── Action bar ──
     c1, c2, _ = st.columns([1, 1.2, 4])
     with c1:
-        if st.button("New Batch", use_container_width=True, key="btn_new", type="secondary"):
+        if st.button("New Batch", width='stretch', key="btn_new", type="secondary"):
             st.session_state.ui = "config"
             st.rerun()
     with c2:
@@ -987,7 +999,7 @@ def view_results():
                 data=zip_data,
                 file_name=f"product_export_{int(time.time())}.zip",
                 mime="application/zip",
-                use_container_width=True,
+                width='stretch',
                 key="btn_download_zip",
                 type="primary"
             )
@@ -1026,7 +1038,7 @@ def view_results():
                     if ptr >= len(imgs):
                         ptr = 0
 
-                    st.image(imgs[ptr], use_container_width=True)
+                    st.image(imgs[ptr], width='stretch')
                     if has_enhanced:
                         st.markdown(
                             '<div style="font-size:0.65rem;color:var(--green);margin-top:-10px;margin-bottom:10px">'
@@ -1046,7 +1058,7 @@ def view_results():
                                 is_active = idx == ptr
                                 
                                 # First render the thumbnail image very small
-                                st.image(imgs[idx], use_container_width=True)
+                                st.image(imgs[idx], width='stretch')
                                 
                                 # Then a tiny selector button directly underneath
                                 st.markdown('<div class="thumb-btn">', unsafe_allow_html=True)
@@ -1055,7 +1067,7 @@ def view_results():
                                 if st.button(
                                     label,
                                     key=f"t_{ref}_{idx}",
-                                    use_container_width=True,
+                                    width='stretch',
                                     type=btn_type
                                 ):
                                     st.session_state.img_ptr[ref] = idx
@@ -1098,7 +1110,7 @@ def view_results():
                         data=item["desc"],
                         file_name=f"{ref}_description.txt",
                         mime="text/plain",
-                        use_container_width=True,
+                        width='stretch',
                         key=f"dl_{ref}",
                         type="secondary"
                     )
@@ -1108,7 +1120,7 @@ def view_results():
                         data=item["desc"],
                         file_name=f"{ref}_description.md",
                         mime="text/markdown",
-                        use_container_width=True,
+                        width='stretch',
                         key=f"dlmd_{ref}",
                         type="secondary"
                     )
@@ -1120,12 +1132,12 @@ def view_results():
                             data=res["enhanced_images"][ptr],
                             file_name=f"{ref}_enhanced_{ptr+1}.png",
                             mime="image/png",
-                            use_container_width=True,
+                            width='stretch',
                             key=f"dlimg_{ref}",
                             type="primary"
                         )
                     else:
-                        st.button("No Enhanced Img", disabled=True, use_container_width=True, key=f"noimg_{ref}")
+                        st.button("No Enhanced Img", disabled=True, width='stretch', key=f"noimg_{ref}")
 
 
 
@@ -1209,7 +1221,8 @@ def main():
         ("out", []),
         ("img_ptr", {}),
         ("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY", "")),
-        ("OPENROUTER_MODEL", "openrouter/free")
+        ("OPENROUTER_MODEL", "openrouter/free"),
+        ("HF_API_TOKEN", os.getenv("HF_API_TOKEN", ""))
     ]
     for key, default in defaults:
         if key not in st.session_state:

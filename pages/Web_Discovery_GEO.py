@@ -152,7 +152,7 @@ def main():
                 p_sku = st.text_input("SKU/Reference")
                 p_url = st.text_input("Product URL")
                 
-                if st.button("Generate Product Schema", use_container_width=True):
+                if st.button("Generate Product Schema", width='stretch'):
                     info = {"title": p_name, "desc": p_desc, "price": p_price, "sku": p_sku, "url": p_url}
                     st.session_state.current_schema = optimizer.generate_product_schema(info)
 
@@ -176,7 +176,7 @@ def main():
         p2 = c2.text_input("Key Point 2", "Excellent rapport qualité/prix")
         p3 = c3.text_input("Key Point 3", "Disponible immédiatement")
 
-        if st.button("Apply GEO Wrapper", use_container_width=True):
+        if st.button("Apply GEO Wrapper", width='stretch'):
             analysis = {"key_point_1": p1, "key_point_2": p2, "key_point_3": p3}
             enhanced = optimizer.wrap_geo_content(raw_content, analysis)
             st.markdown("### Optimized Result Preview")

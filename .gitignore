@@ -40,6 +40,8 @@ enhanced_images.zip
 upscaler.zip
 upscaler/
 *.log
+temp_input*.png
+debug_input*.png
 
 # Windows Reserved (Problematic for Git)
 nul

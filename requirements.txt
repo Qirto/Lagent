@@ -8,5 +8,5 @@ beautifulsoup4
 lxml
 pymupdf
 streamlit-image-comparison
-inferencesh
 numpy
+gradio_client
