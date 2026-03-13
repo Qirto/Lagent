@@ -920,7 +920,7 @@ def view_exec():
                                         waiting_box.empty() # Clear waiting msg
                             else:
                                 # Fast Local Mode
-                                enh = enhancer._local_fallback(img_url)
+                                enh = enhancer._local_enhance(img_url)
                                 if enh:
                                     enh_data = enhancer.to_bytes(enh, fmt="PNG")
                         
