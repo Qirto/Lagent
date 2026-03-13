@@ -508,12 +508,13 @@ def apply_theme():
         
         /* Thumbnails & Images */
         .thumb-btn .stButton > button {
-            padding: 0.2rem !important;
-            min-height: 30px !important;
-            font-size: 0.75rem !important;
+            padding: 0.1rem !important;
+            min-height: 20px !important;
+            font-size: 0.65rem !important;
             border-radius: 0 !important;
             letter-spacing: 0;
             border-width: 1px !important;
+            margin-top: -15px !important;
         }
         div[data-testid="stImage"] img {
             border: 2px solid var(--border);
@@ -724,14 +725,36 @@ def view_config():
                 help="The AI will mimic this text's tone and structure when writing descriptions.",
             )
 
-            st.session_state["auto_enhance"] = True # Force auto-enhance 
+            # ── Image Enhancement Toggle ──
+            st.divider()
+            st.markdown('<div style="font-family: \'Orbitron\', sans-serif; font-size: 0.9rem; margin-bottom: 10px;">Enhancement Engine</div>', unsafe_allow_html=True)
             
-            st.markdown(
-                '<div style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem; color: var(--secondary); margin-top: 10px;">'
-                '⚡ Auto-Enhancement Active (Local Lanczos Upscale)'
-                '</div>',
-                unsafe_allow_html=True
+            enh_type = st.radio(
+                "Select Engine",
+                ["Fast Local (OpenCV)", "Deep AI (Hugging Face)"],
+                index=0,
+                key="enh_type_radio",
+                help="Deep AI provides professional quality but is slower and requires an API token."
             )
+            st.session_state["auto_enhance"] = True
+            st.session_state["hf_active"] = (enh_type == "Deep AI (Hugging Face)")
+
+            if st.session_state["hf_active"]:
+                st.session_state["HF_API_TOKEN"] = st.text_input(
+                    "HF API Token (BYOK)",
+                    value=st.session_state.get("HF_API_TOKEN", ""),
+                    type="password",
+                    help="Paste your free Hugging Face token here."
+                )
+                if not st.session_state["HF_API_TOKEN"]:
+                    st.warning("Please enter your HF Token to use Deep AI.")
+            else:
+                st.markdown(
+                    '<div style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem; color: var(--secondary); margin-top: 5px;">'
+                    '⚡ Fast Local Mode Active (LANCZOS/OpenCV)'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
 
             st.checkbox(
                 "Use n8n pipeline",
@@ -838,17 +861,21 @@ def view_exec():
 
         # Auto-enhance + n8n integration
         do_enhance = st.session_state.get("auto_enhance", False)
+        hf_active = st.session_state.get("hf_active", False)
+        hf_token = st.session_state.get("HF_API_TOKEN")
         use_n8n = st.session_state.get("use_n8n", False)
-        enhancer = ImageEnhancer() if do_enhance else None
+        enhancer = ImageEnhancer(api_token=hf_token) if do_enhance else None
         bridge = N8NBridge() if use_n8n else None
 
         statuses = []
+        waiting_box = st.empty() # For HF pacing messages
+
         for i, target in enumerate(st.session_state.queue):
             ref = target["reference"]
 
             # Update live log
             entries = list(statuses)
-            entries.append(f'<div class="st-item proc">Fetching: <strong>{ref}</strong> (7 sites)</div>')
+            entries.append(f'<div class="st-item proc">Fetching: <strong>{ref}</strong> (9 sites)</div>')
             log.markdown("".join(entries), unsafe_allow_html=True)
 
             web = scraper.fetch_all(ref, target["designation"], target.get("color"))
@@ -873,23 +900,35 @@ def view_exec():
 
                     enhanced_imgs = []
                     
-                    profile = "balanced"
-                    engine = "Local (Fast)"
-                    
                     for img_url in web["images"][:6]:
                         enh_data = None
                         if bridge and bridge.is_configured:
                             enh_data = bridge.send_image_for_enhancement(img_url, ref, web.get("source", ""))
                         
                         if not enh_data and enhancer:
-                            enh = enhancer.enhance_from_url(img_url, profile=profile)
-                            if enh:
-                                enh_data = enhancer.to_bytes(enh, fmt="PNG")
+                            if hf_active and hf_token:
+                                # Deep AI Mode: We need to handle the generator for pacing messages
+                                result_gen = enhancer.enhance_hf_api(img_url, hf_token)
+                                
+                                # Since it might yield dicts for waiting or return an Image
+                                for res_packet in result_gen:
+                                    if isinstance(res_packet, dict) and res_packet.get("status") == "waiting":
+                                        waiting_box.warning(res_packet["msg"])
+                                    elif not isinstance(res_packet, dict):
+                                        # It's the PIL image
+                                        enh_data = enhancer.to_bytes(res_packet, fmt="PNG")
+                                        waiting_box.empty() # Clear waiting msg
+                            else:
+                                # Fast Local Mode
+                                enh = enhancer._local_fallback(img_url)
+                                if enh:
+                                    enh_data = enhancer.to_bytes(enh, fmt="PNG")
                         
                         if enh_data:
                             enhanced_imgs.append(enh_data)
                     
                     web["enhanced_images"] = enhanced_imgs
+
 
                 desc = ""
                 # Use local description writer with category
@@ -998,13 +1037,21 @@ def view_results():
                     # Thumbnail navigation
                     if len(imgs) > 1:
                         max_thumbs = min(len(imgs), 6)
-                        st.markdown('<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; font-family: \'JetBrains Mono\', monospace;">SELECT VIEW:</div>', unsafe_allow_html=True)
+                        st.markdown('<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; font-family: \'JetBrains Mono\', monospace;">GALLERY:</div>', unsafe_allow_html=True)
+                        
+                        # Show visual thumbnails instead of just text buttons
                         thumb_cols = st.columns(max_thumbs)
                         for idx in range(max_thumbs):
                             with thumb_cols[idx]:
                                 is_active = idx == ptr
+                                
+                                # First render the thumbnail image very small
+                                st.image(imgs[idx], use_container_width=True)
+                                
+                                # Then a tiny selector button directly underneath
+                                st.markdown('<div class="thumb-btn">', unsafe_allow_html=True)
                                 btn_type = "primary" if is_active else "secondary"
-                                label = f"IMG {idx + 1}"
+                                label = f"SEL" if is_active else "View"
                                 if st.button(
                                     label,
                                     key=f"t_{ref}_{idx}",
@@ -1013,6 +1060,7 @@ def view_results():
                                 ):
                                     st.session_state.img_ptr[ref] = idx
                                     st.rerun()
+                                st.markdown('</div>', unsafe_allow_html=True)
 
                 st.markdown(f'<div class="price-tag">{res["price"]}</div>', unsafe_allow_html=True)
                 

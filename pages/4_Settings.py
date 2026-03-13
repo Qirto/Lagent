@@ -159,20 +159,20 @@ def main():
         st.session_state.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
     if "OPENROUTER_MODEL" not in st.session_state:
         st.session_state.OPENROUTER_MODEL = "openrouter/free"
+    if "HF_API_TOKEN" not in st.session_state:
+        st.session_state.HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
 
     tab_byok, tab_system = st.tabs(["Bring Your Own Key", "System Info"])
 
     with tab_byok:
-        st.markdown('<p class="sec-title">OpenRouter Configuration</p>', unsafe_allow_html=True)
-        st.markdown('<p class="sec-desc">Configure your OpenRouter API key and preferred model. These settings are stored in your current session.</p>', unsafe_allow_html=True)
-
         col_form, col_help = st.columns([1.5, 1], gap="large")
 
         with col_form:
+            # ── OpenRouter ──
             with st.container(border=True):
-                st.subheader("API Credentials")
+                st.subheader("OpenRouter Configuration")
+                st.markdown('<p class="sec-desc">Used for product descriptions and reasoning.</p>', unsafe_allow_html=True)
                 
-                # API Key Input
                 new_key = st.text_input(
                     "OpenRouter API Key", 
                     value=st.session_state.OPENROUTER_API_KEY, 
@@ -180,7 +180,6 @@ def main():
                     help="Find or create your key at https://openrouter.ai/keys"
                 )
                 
-                # Model Selection
                 models = [
                     "openrouter/free",
                     "google/gemini-2.0-flash-001",
@@ -192,7 +191,6 @@ def main():
                     "deepseek/deepseek-chat"
                 ]
                 
-                # Ensure current model is in list or add it
                 current_model = st.session_state.OPENROUTER_MODEL
                 if current_model not in models:
                     models.insert(0, current_model)
@@ -200,27 +198,32 @@ def main():
                 new_model = st.selectbox(
                     "Primary AI Model", 
                     options=models,
-                    index=models.index(current_model),
-                    help="The model used for generating product descriptions."
+                    index=models.index(current_model)
                 )
+
+                if st.button("Save OpenRouter Settings", use_container_width=True):
+                    st.session_state.OPENROUTER_API_KEY = new_key
+                    st.session_state.OPENROUTER_MODEL = new_model
+                    st.success("OpenRouter settings saved!")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ── Hugging Face ──
+            with st.container(border=True):
+                st.subheader("Hugging Face Configuration")
+                st.markdown('<p class="sec-desc">Used for Deep AI Image Enhancement (SwinIR).</p>', unsafe_allow_html=True)
                 
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Save Settings", use_container_width=True):
-                        st.session_state.OPENROUTER_API_KEY = new_key
-                        st.session_state.OPENROUTER_MODEL = new_model
-                        st.success("Settings saved for this session!")
-                
-                with col2:
-                    if st.button("Test Connection", use_container_width=True):
-                        with st.spinner("Testing handshake..."):
-                            success, msg = test_openrouter_connection(new_key, new_model)
-                            if success:
-                                st.toast(msg, icon="✅")
-                            else:
-                                st.error(msg)
+                new_hf_token = st.text_input(
+                    "Hugging Face Access Token", 
+                    value=st.session_state.HF_API_TOKEN, 
+                    type="password",
+                    help="Get a free token at https://huggingface.co/settings/tokens"
+                )
+
+                if st.button("Save Hugging Face Settings", use_container_width=True):
+                    st.session_state.HF_API_TOKEN = new_hf_token
+                    st.success("Hugging Face token saved!")
+
 
         with col_help:
             st.info("""

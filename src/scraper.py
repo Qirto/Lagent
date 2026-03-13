@@ -10,7 +10,7 @@ class TunisianScraper:
 
     SITES = [
         "MyTek", "Tunisianet", "Wiki", "MegaPC",
-        "SBS Informatique", "Spacenet", "Scoop", "Zoom",
+        "SBS Informatique", "Spacenet", "Scoop", "Zoom", "BestBuy",
     ]
 
     def __init__(self):
@@ -57,57 +57,76 @@ class TunisianScraper:
         for url in image_list:
             if not url or not isinstance(url, str) or not url.startswith("http"):
                 continue
+            
+            # Clean up prestashop duplicate formats (e.g. -large_default.jpg vs -medium_default.jpg)
             base_url = url.split('?')[0]
-            if base_url not in seen:
+            
+            # Strip standard size suffixes to check for base image duplicates
+            core_name = re.sub(r'-(large_default|medium_default|small_default|home_default|thickbox_default)\.jpg', '', base_url)
+            
+            if core_name not in seen:
                 low = base_url.lower()
+                # Accept if it's not explicitly a thumbnail, or if it has a high-res indicator, or if it's our only option
                 if "thumb" not in low or any(
                     x in low for x in ["1000x1000", "large", "full", "media", "zoom", "high", "max"]
                 ):
                     cleaned.append(base_url)
-                    seen.add(base_url)
+                    seen.add(core_name)
         return cleaned
 
     def _verify_match(self, ref, color, details):
-        """Leniently verifies if the product matches the Reference or Title."""
+        """Strictly verifies if the product matches the Reference and Color."""
         def normalize(s):
             return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
         clean_sku = normalize(details.get('sku', ''))
         clean_ref = normalize(ref)
+        clean_title = details.get('title', '').upper()
 
-        # 1. Exact SKU match after stripping non-alphanumeric
-        if clean_ref and clean_sku and (clean_ref in clean_sku or clean_sku in clean_ref):
-            pass # SKU matches
-        else:
-            # 2. Check if reference is in the title
-            clean_title = details.get('title', '').upper()
-            
-            # SOG alias handling
-            ref_aliased = clean_ref.replace("SOG", "SPIRITOFGAMER")
-            title_aliased = normalize(clean_title).replace("SOG", "SPIRITOFGAMER")
+        # 1. Matching Logic: Reference must be in Title or SKU
+        # Handle aliases (SOG -> SPIRITOFGAMER)
+        ref_parts = [normalize(p) for p in str(ref).split() if normalize(p)]
+        ref_aliased = clean_ref.replace("SOG", "SPIRITOFGAMER")
+        title_norm = normalize(clean_title)
+        title_aliased = title_norm.replace("SOG", "SPIRITOFGAMER")
 
-            if clean_ref not in normalize(clean_title) and ref_aliased not in title_aliased:
-                # 3. Fuzzy split check (if ref is "PRO X", check "PRO" and "X")
-                ref_parts = [normalize(p) for p in str(ref).split() if normalize(p)]
-                if not ref_parts or not all(p in normalize(clean_title) for p in ref_parts):
-                    return False
+        is_match = (
+            (clean_ref and clean_sku and (clean_ref in clean_sku or clean_sku in clean_ref)) or
+            (clean_ref in title_norm) or
+            (ref_aliased in title_aliased) or
+            (ref_parts and all(p in title_norm for p in ref_parts))
+        )
 
-        # Color match if specified
+        if not is_match:
+            return False
+
+        # 2. Strict Color Matching
         if color:
             c_upper = color.upper()
-            search_space = (str(details.get('title', '')) + " " + str(details.get('specs', ''))).upper()
-            color_variants = [c_upper]
-            if c_upper == "NOIR":
-                color_variants.extend(["BLACK", "BLK"])
-            elif c_upper == "BLANC":
-                color_variants.extend(["WHITE", "WHT", "ARTIC", "SNOW"])
-            elif c_upper == "ROUGE":
-                color_variants.extend(["RED"])
-            elif c_upper == "BLEU":
-                color_variants.extend(["BLUE"])
-                
-            if not any(v in search_space for v in color_variants):
-                return False
+            search_space = (clean_title + " " + str(details.get('specs', ''))).upper()
+            
+            # Map search color to variants and negative constraints
+            constraints = {
+                "NOIR": {"pos": ["NOIR", "BLACK", "BLK"], "neg": ["BLANC", "WHITE", "ROUGE", "RED", "BLEU", "BLUE", "ROSE", "PINK", "VERT", "GREEN"]},
+                "BLANC": {"pos": ["BLANC", "WHITE", "WHT", "ARTIC", "SNOW"], "neg": ["NOIR", "BLACK", "ROUGE", "RED", "BLEU", "BLUE", "ROSE", "PINK", "VERT", "GREEN"]},
+                "ROUGE": {"pos": ["ROUGE", "RED"], "neg": ["NOIR", "BLACK", "BLANC", "WHITE", "BLEU", "BLUE"]},
+                "BLEU": {"pos": ["BLEU", "BLUE"], "neg": ["NOIR", "BLACK", "BLANC", "WHITE", "ROUGE", "RED"]},
+                "ROSE": {"pos": ["ROSE", "PINK"], "neg": ["NOIR", "BLACK", "BLANC", "WHITE", "BLEU", "BLUE", "ROUGE", "RED"]},
+                "VERT": {"pos": ["VERT", "GREEN"], "neg": ["NOIR", "BLACK", "BLANC", "WHITE", "BLEU", "BLUE", "ROUGE", "RED"]},
+            }
+
+            if c_upper in constraints:
+                cfg = constraints[c_upper]
+                # Must have at least one positive indicator
+                if not any(v in search_space for v in cfg["pos"]):
+                    return False
+                # Must NOT have any explicit negative indicator in the TITLE (to avoid cross-color model listing)
+                if any(v in clean_title for v in cfg["neg"]):
+                    return False
+            else:
+                # Generic color check
+                if c_upper not in search_space:
+                    return False
                 
         return True
 
@@ -121,8 +140,8 @@ class TunisianScraper:
                            link_sel=".product-title a",
                            title_sel="h1[itemprop='name'], h1[prop='name'], h1.product-detail-name, h1",
                            sku_sel=".product-reference span, span[itemprop='sku']",
-                           price_sel=".current-price span[itemprop='price'], .current-price .price, .current-price, .price",
-                           specs_sel="#description, .product-description",
+                           price_sel=".current-price span[itemprop='price'], .current-price .price, .current-price, .price, .product-price",
+                           specs_sel="#description, .product-description, div[itemprop='description'], .product-information, .description",
                            img_sels=None):
         """Generic PrestaShop product search. Most Tunisian sites run PrestaShop."""
         if img_sels is None:
@@ -304,6 +323,7 @@ class TunisianScraper:
             base_url="https://www.megapc.tn",
             source_name="MegaPC",
             ref=ref, color=color,
+            search_path="/recherche?controller=search&s={query}",
         )
 
     def search_sbs(self, ref, color=""):
@@ -312,6 +332,7 @@ class TunisianScraper:
             base_url="https://www.sbsinformatique.com",
             source_name="SBS Informatique",
             ref=ref, color=color,
+            search_path="/recherche?controller=search&s={query}",
         )
 
     def search_spacenet(self, ref, color=""):
@@ -320,7 +341,60 @@ class TunisianScraper:
             base_url="https://www.spacenet.tn",
             source_name="Spacenet",
             ref=ref, color=color,
+            search_path="/recherche?controller=search&s={query}",
+            item_sel=".item-product, .product-miniature",
+            link_sel=".product-title a, h2 a, h3 a",
         )
+
+    def search_bestbuy(self, ref, color=""):
+        """BestBuyTunisie.tn - WooCommerce."""
+        query = ref.upper().replace("SOG", "SPIRIT OF GAMER")
+        url = f"https://bestbuytunisie.tn/?s={quote(query)}&post_type=product"
+        soup = self._get_soup(url)
+        if not soup:
+            return None
+
+        # WooCommerce typically uses .product or .type-product
+        for item in soup.select(".product, .type-product"):
+            link = item.select_one("a[href]")
+            if not link:
+                continue
+
+            href = link['href']
+            psoup = self._get_soup(href)
+            if not psoup:
+                continue
+
+            sku_el = psoup.select_one(".sku")
+            sku = sku_el.get_text(strip=True) if sku_el else ref
+            
+            title_el = psoup.select_one(".product_title, h1")
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            price_el = psoup.select_one(".price, .woocommerce-Price-amount")
+            price = self.format_price(price_el.get_text(strip=True)) if price_el else "N/A"
+
+            specs_el = psoup.select_one(".woocommerce-product-details__short-description, #tab-description, .description")
+            specs = specs_el.get_text(strip=True, separator='\n') if specs_el else ""
+
+            details = {
+                "source": "BestBuy", "sku": sku, "title": title,
+                "url": href, "price": price, "specs": specs, "images": [],
+            }
+
+            if self._verify_match(ref, color, details):
+                # Images
+                og = psoup.find("meta", property="og:image")
+                if og: details['images'].append(og.get("content"))
+                
+                # Gallery
+                for img in psoup.select(".woocommerce-product-gallery img, .images img"):
+                    src = img.get('data-src') or img.get('src')
+                    if src: details['images'].append(src)
+                
+                details['images'] = self._clean_images(details['images'])
+                return details
+        return None
 
     def search_scoop(self, ref, color=""):
         """Scoop.com.tn - PrestaShop."""
@@ -343,8 +417,8 @@ class TunisianScraper:
     # ──────────────────────────────────────────
 
     def fetch_all(self, ref, designation="", color=""):
-        """Search ALL 7 Tunisian retailer sites in parallel, aggregate results."""
-        print(f"[LOG] Fetching across 7 sites for: {ref}")
+        """Search ALL 9 Tunisian retailer sites in parallel, aggregate results."""
+        print(f"[LOG] Fetching across 9 sites for: {ref}")
 
         search_fns = [
             self.search_mytek,
@@ -355,13 +429,14 @@ class TunisianScraper:
             self.search_spacenet,
             self.search_scoop,
             self.search_zoom,
+            self.search_bestbuy,
         ]
 
         results = []
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=9) as executor:
             site_names = [
                 "MyTek", "Tunisianet", "Wiki", "MegaPC",
-                "SBS", "Spacenet", "Scoop", "Zoom",
+                "SBS", "Spacenet", "Scoop", "Zoom", "BestBuy"
             ]
             futures = {
                 executor.submit(fn, ref, color): name
@@ -387,20 +462,25 @@ class TunisianScraper:
         if not results:
             return None
 
-        # Aggregation: use first result as base, merge images from all
+        # Aggregation: 
+        # 1. Use the result with the most specs as the base
+        results.sort(key=lambda x: len(x.get('specs', '')), reverse=True)
         base = results[0]
-        combined_imgs = list(base['images'])
-        all_sources = [base['source']]
+        
+        combined_imgs = []
+        all_sources = []
 
-        for r in results[1:]:
+        for r in results:
             all_sources.append(r['source'])
             for img in r['images']:
-                if img not in combined_imgs:
+                # Deduplication logic
+                core_img = re.sub(r'-(large_default|medium_default|small_default|home_default|thickbox_default)\.jpg', '', img)
+                if not any(core_img in e for e in combined_imgs):
                     combined_imgs.append(img)
 
-        base['images'] = combined_imgs
-        base['all_sources'] = all_sources
-        base['color_tag'] = color # Keep for renaming
+        base['images'] = self._clean_images(combined_imgs)
+        base['all_sources'] = list(set(all_sources))
+        base['color_tag'] = color 
         return base
 
     def search_global(self, ref, color=""):
