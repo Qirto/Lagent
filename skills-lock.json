@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "3c0e3bc1f4669dd6d271db365f1f6b1d806447b3d733c0d82a332894b246ae64"
     },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "1d70f4e82bae766934977ea6fb32623358e2ecb562926f7d2cd8ca6c31024cc5"
+    },
     "web-content": {
       "source": "alinaqi/claude-bootstrap",
       "sourceType": "github",

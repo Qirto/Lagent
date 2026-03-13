@@ -101,13 +101,20 @@ class ProductPDFExtractor:
         return ""
 
     def _detect_category(self, page, table_bbox):
-        """Finds the largest text above the table to use as category."""
+        """Finds the full line of text above the table to use as category."""
         words = page.extract_words(extra_attrs=["size"])
-        headers = [w for w in words if w['size'] > 12 and w['bottom'] < table_bbox[1]]
-        if headers:
-            # Get closest one
-            best = max(headers, key=lambda x: x['bottom'])
-            return best['text'].strip().upper()
+        # Filter words that are above the table and significantly large
+        candidate_words = [w for w in words if w['size'] > 12 and w['bottom'] < table_bbox[1]]
+        
+        if candidate_words:
+            # Find the word closest to the table
+            closest_word = max(candidate_words, key=lambda x: x['bottom'])
+            # Find all words on the same line (approximate y-coordinate)
+            line_words = [w for w in candidate_words if abs(w['top'] - closest_word['top']) < 5]
+            # Sort words by left position to reconstruct the line
+            line_words.sort(key=lambda x: x['x0'])
+            return " ".join([w['text'] for w in line_words]).strip().upper()
+        
         return "GENERAL"
 
     def _parse_blocks(self, page):

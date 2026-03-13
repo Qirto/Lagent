@@ -16,57 +16,100 @@ load_dotenv()
 def apply_theme():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
         :root {
-            --primary: #7c6aef;
-            --primary-hover: #9586f5;
-            --bg: #0e1117;
-            --surface: #161b22;
-            --border: #21262d;
+            --primary: #bc13fe;
+            --primary-glow: rgba(188, 19, 254, 0.4);
+            --secondary: #00f3ff;
+            --secondary-glow: rgba(0, 243, 255, 0.3);
+            --bg: #050505;
+            --surface: rgba(16, 16, 24, 0.7);
+            --border: rgba(188, 19, 254, 0.3);
             --text: #e6edf3;
             --text-secondary: #8b949e;
-            --radius: 8px;
+            --radius: 4px;
         }
 
-        html, body, [data-testid="stAppViewContainer"] {
+        html, body, [data-testid="stAppViewContainer"],
+        .stApp, [data-testid="stMainBlockContainer"] {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg) !important;
-            color: var(--text);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 50%),
+                linear-gradient(rgba(188, 19, 254, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
         }
 
         .sec-title {
+            font-family: 'Orbitron', sans-serif !important;
             font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;
+            text-transform: uppercase; letter-spacing: 2px;
         }
         .sec-desc {
             font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;
         }
         
         .brand {
-            text-align: center; padding: 1.25rem 0 0.5rem 0;
+            text-align: center; padding: 1.5rem 0;
         }
         .brand h1 {
-            font-size: 1.5rem; font-weight: 300; letter-spacing: 5px; color: var(--text); margin: 0;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 2rem; font-weight: 900; letter-spacing: 8px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .brand h1 b { font-weight: 700; color: var(--primary); }
 
-        .settings-card {
-            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;
+        [data-testid="stVerticalBlockBorderWrapper"] > div:has(> div.element-container) {
+            background: var(--surface) !important;
+            backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            padding: 1.5rem;
         }
         
         [data-testid="stSidebar"] {
-            background-color: var(--surface) !important;
+            background-color: rgba(5, 5, 5, 0.95) !important;
             border-right: 1px solid var(--border) !important;
+            backdrop-filter: blur(15px);
+            box-shadow: 5px 0 15px rgba(188, 19, 254, 0.1);
         }
-        
-        .stButton > button {
-            border-radius: var(--radius) !important;
-            background: var(--primary) !important;
-            color: #fff !important;
-            font-weight: 600 !important;
+        [data-testid="stSidebarNav"] {
+            background-color: transparent !important;
+            padding-top: 2rem;
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s;
+            text-decoration: none !important;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .back-to-top:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: translateY(-3px);
         }
         </style>
+        <a href="#lagent-settings" class="back-to-top">↑</a>
     """, unsafe_allow_html=True)
+
 
 
 def test_openrouter_connection(api_key, model):
@@ -100,12 +143,12 @@ def test_openrouter_connection(api_key, model):
 
 
 def main():
-    st.set_page_config(page_title="Settings - Product AI", layout="wide")
+    st.set_page_config(page_title="Settings - Lagent", layout="wide")
     apply_theme()
 
     st.markdown(
-        '<div class="brand">'
-        "<h1>Agent<b>Settings</b></h1>"
+        '<div class="brand" id="lagent-settings">'
+        "<h1>Lagent<b>Settings</b></h1>"
         '<p style="font-size:0.65rem; color:#8b949e; letter-spacing:2px; text-transform:uppercase;">BYOK & Engine Configuration</p>'
         "</div>",
         unsafe_allow_html=True,

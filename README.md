@@ -1,6 +1,6 @@
-# Lagent: Agentic Product AI & Cloud Synthesis 🚀
+# Lagent: Agentic AI & Cloud Synthesis 🚀
 
-Lagent is a high-performance **Product AI Agent** designed to automate the transition from physical PDF catalogs to digital-ready content. It combines agentic web scraping, neural image enhancement (Vulkan/Volcan), and LLM-powered synthesis to deliver a complete product discovery and optimization pipeline.
+Lagent is a high-performance **Agentic AI** designed to automate the transition from physical PDF catalogs to digital-ready content. It combines agentic web scraping, neural image enhancement (Vulkan/Volcan), and LLM-powered synthesis to deliver a complete product discovery and optimization pipeline.
 
 ![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)

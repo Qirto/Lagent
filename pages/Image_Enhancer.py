@@ -27,140 +27,120 @@ except Exception as e:
 def apply_theme():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
         :root {
-            --primary: #7c6aef;
-            --primary-hover: #9586f5;
-            --primary-dim: rgba(124, 106, 239, 0.10);
-            --bg: #0e1117;
-            --surface: #161b22;
-            --surface-raised: #1c2333;
-            --border: #21262d;
-            --border-light: #30363d;
+            --primary: #bc13fe;
+            --primary-glow: rgba(188, 19, 254, 0.4);
+            --secondary: #00f3ff;
+            --secondary-glow: rgba(0, 243, 255, 0.3);
+            --bg: #050505;
+            --surface: rgba(16, 16, 24, 0.7);
+            --border: rgba(188, 19, 254, 0.3);
             --text: #e6edf3;
             --text-secondary: #8b949e;
-            --text-muted: #484f58;
-            --green: #3fb950;
-            --green-dim: rgba(63, 185, 80, 0.10);
-            --amber: #d29922;
-            --red: #f85149;
-            --red-dim: rgba(248, 81, 73, 0.10);
-            --radius: 6px;
-            --radius-lg: 10px;
+            --radius: 4px;
         }
 
         html, body, [data-testid="stAppViewContainer"],
         .stApp, [data-testid="stMainBlockContainer"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg) !important;
-            color: var(--text);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 50%),
+                linear-gradient(rgba(188, 19, 254, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
         }
 
-        #MainMenu, footer { display: none !important; }
-        [data-testid="stSidebar"] {
-            background-color: var(--surface) !important;
-            border-right: 1px solid var(--border) !important;
-        }
-        [data-testid="stSidebarNav"] {
-            background-color: var(--surface) !important;
-        }
-
-        /* ─── Compact Section headings ─── */
         .sec-title {
-            font-size: 1rem; font-weight: 600; color: var(--text);
-            margin: 0 0 1px 0;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 1.1rem; font-weight: 600; color: var(--text);
+            text-transform: uppercase; letter-spacing: 2px;
         }
         .sec-desc {
-            font-size: 0.78rem; color: var(--text-secondary);
-            margin: 0 0 1rem 0; line-height: 1.4;
-        }
-        .card-hdr {
-            font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--text-secondary);
-            padding-bottom: 0.5rem; margin-bottom: 0.6rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        /* ─── Flat Buttons ─── */
-        .stButton > button {
-            border-radius: var(--radius) !important;
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 500 !important; font-size: 0.8rem !important;
-            padding: 0.4rem 1rem !important;
-            transition: all 0.1s ease !important;
-            text-transform: none !important;
-            background: var(--primary) !important;
-            color: #fff !important; border: none !important;
-            box-shadow: none !important;
-        }
-        .stButton > button:hover {
-            background: var(--primary-hover) !important;
-        }
-
-        .ghost-btn button {
-            background: var(--border) !important;
-            color: var(--text-secondary) !important;
-            border: none !important;
-        }
-        .ghost-btn button:hover {
-            color: var(--text) !important;
-            background: var(--border-light) !important;
-        }
-
-        .stDownloadButton > button {
-            background: var(--surface-raised) !important;
-            color: var(--text-secondary) !important;
-            border: 1px solid var(--border-light) !important;
-            font-size: 0.75rem !important;
-            padding: 0.3rem 0.8rem !important;
-        }
-
-        /* ─── Compact Inputs ─── */
-        .stTextInput > div > div, .stNumberInput > div > div, .stSelectbox > div > div {
-            background-color: var(--surface) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius) !important;
-            min-height: 32px !important;
+            font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;
         }
         
-        .stSelectbox label, .stTextInput label, .stNumberInput label {
-            font-size: 0.75rem !important;
-            margin-bottom: 2px !important;
-        }
-
-        [data-testid="stFileUploader"] section {
-            border: 1px dashed var(--border-light) !important;
-            border-radius: var(--radius) !important;
-            padding: 1rem !important;
-        }
-
-        .stProgress > div > div > div > div {
-            background: var(--primary) !important;
-            height: 4px !important;
-        }
-
         .brand {
-            text-align: left; padding: 0.5rem 0 1rem 0;
-            display: flex; align-items: center; gap: 10px;
+            text-align: left; padding: 1rem 0;
         }
         .brand h1 {
-            font-size: 1.2rem; font-weight: 300; letter-spacing: 2px;
-            color: var(--text); margin: 0; line-height: 1;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 1.5rem; font-weight: 900; letter-spacing: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .brand h1 b { font-weight: 700; color: var(--primary); }
+
+        [data-testid="stVerticalBlockBorderWrapper"] > div:has(> div.element-container) {
+            background: var(--surface) !important;
+            backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+        }
 
         .analysis-chip {
-            padding: 4px 10px; border-radius: 4px; font-size: 0.7rem;
+            padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;
             font-family: 'JetBrains Mono', monospace;
-            background: var(--surface-raised); border: 1px solid var(--border);
-            color: var(--text-secondary); display: inline-block; margin-right: 5px;
+            background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2);
+            color: var(--secondary); display: inline-block; margin-right: 5px;
         }
 
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+        .stButton > button {
+            border-radius: var(--radius) !important;
+            font-family: 'Orbitron', sans-serif !important;
+            background: transparent !important;
+            color: var(--secondary) !important;
+            border: 1px solid var(--secondary) !important;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: all 0.3s;
+        }
+        .stButton > button:hover {
+            background: var(--secondary) !important;
+            color: var(--bg) !important;
+            box-shadow: 0 0 20px var(--secondary-glow) !important;
+        }
+
+        [data-testid="stSidebar"] {
+            background-color: rgba(5, 5, 5, 0.95) !important;
+            border-right: 1px solid var(--border) !important;
+            backdrop-filter: blur(15px);
+            box-shadow: 5px 0 15px rgba(188, 19, 254, 0.1);
+        }
+        [data-testid="stSidebarNav"] {
+            background-color: transparent !important;
+            padding-top: 2rem;
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s;
+            text-decoration: none !important;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .back-to-top:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: translateY(-3px);
+        }
         </style>
+        <a href="#lagent-enhance" class="back-to-top">↑</a>
     """, unsafe_allow_html=True)
 
 
@@ -188,7 +168,7 @@ def main():
     col_brand, col_nav = st.columns([1, 2])
     with col_brand:
         st.markdown(
-            '<div class="brand">'
+            '<div class="brand" id="lagent-enhance">'
             "<h1>Neural<b>Enhance</b></h1>"
             "</div>",
             unsafe_allow_html=True,
@@ -315,7 +295,8 @@ def main():
                                 
                                 if enhanced:
                                     all_pairs.append((f"{prod['id']}_{j+1}", orig, enhanced))
-                        except: pass
+                        except Exception: 
+                            pass
                         bar.progress(processed / total_imgs)
                 st.session_state.enh_pairs = all_pairs
                 st.rerun()

@@ -1,6 +1,6 @@
 # AGENTS.md - Project Guidelines and Standards
 
-This project is a high-performance Product AI Agent designed for automated PDF catalog processing and cloud-based content synthesis.
+This project is a high-performance Lagent Agent designed for automated PDF catalog processing and cloud-based content synthesis.
 
 ---
 

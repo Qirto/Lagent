@@ -43,336 +43,94 @@ def clean_cache():
 def apply_theme():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
         :root {
-            --primary: #7c6aef;
-            --primary-hover: #9586f5;
-            --primary-dim: rgba(124, 106, 239, 0.10);
-            --bg: #0e1117;
-            --surface: #161b22;
-            --surface-raised: #1c2333;
-            --border: #21262d;
-            --border-light: #30363d;
+            --primary: #bc13fe;
+            --primary-glow: rgba(188, 19, 254, 0.4);
+            --secondary: #00f3ff;
+            --secondary-glow: rgba(0, 243, 255, 0.3);
+            --accent: #ff00ff;
+            --bg: #050505;
+            --surface: rgba(16, 16, 24, 0.7);
+            --surface-bright: rgba(26, 26, 36, 0.8);
+            --border: rgba(188, 19, 254, 0.3);
+            --border-bright: rgba(0, 243, 255, 0.5);
             --text: #e6edf3;
             --text-secondary: #8b949e;
             --text-muted: #484f58;
             --green: #3fb950;
-            --green-dim: rgba(63, 185, 80, 0.10);
-            --amber: #d29922;
             --red: #f85149;
-            --red-dim: rgba(248, 81, 73, 0.10);
-            --radius: 8px;
-            --radius-lg: 12px;
+            --radius: 4px;
+            --radius-lg: 8px;
         }
 
+        /* Base App Styling */
         html, body, [data-testid="stAppViewContainer"],
         .stApp, [data-testid="stMainBlockContainer"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg) !important;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 50%),
+                linear-gradient(rgba(188, 19, 254, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
             color: var(--text);
         }
 
         #MainMenu, footer { display: none !important; }
+
+        /* Sidebar Styling */
         [data-testid="stSidebar"] {
-            background-color: var(--surface) !important;
+            background-color: rgba(5, 5, 5, 0.95) !important;
             border-right: 1px solid var(--border) !important;
+            backdrop-filter: blur(15px);
+            box-shadow: 5px 0 15px rgba(188, 19, 254, 0.1);
         }
         [data-testid="stSidebarNav"] {
-            background-color: var(--surface) !important;
+            background-color: transparent !important;
+            padding-top: 2rem;
         }
-
-        /* ─── Stepper ─── */
-        .stepper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0;
-            margin: 0 auto 2.25rem auto;
-            max-width: 640px;
-            padding: 0.75rem 0;
-        }
-        .step {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
-            font-size: 0.78rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            white-space: nowrap;
-        }
-        .step-num {
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            border: 1.5px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.72rem;
-            font-weight: 600;
-            flex-shrink: 0;
-            transition: all 0.2s;
-        }
-        .step.active { color: var(--primary-hover); }
-        .step.active .step-num {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: #fff;
-            box-shadow: 0 0 12px rgba(124, 106, 239, 0.35);
-        }
-        .step.done { color: var(--green); }
-        .step.done .step-num {
-            background: var(--green-dim);
-            border-color: var(--green);
-            color: var(--green);
-        }
-        .step-line {
-            width: 36px; height: 1.5px;
-            background: var(--border);
-            flex-shrink: 0;
-        }
-        .step-line.done { background: var(--green); }
-
-        /* ─── Section headings ─── */
-        .sec-title {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: var(--text);
-            margin: 0 0 2px 0;
-        }
-        .sec-desc {
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            margin: 0 0 1.5rem 0;
-            line-height: 1.5;
-        }
-
-        /* ─── Card header ─── */
-        .card-hdr {
-            font-size: 0.68rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--text-secondary);
-            padding-bottom: 0.6rem;
-            margin-bottom: 0.8rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        /* ─── Buttons ─── */
-        .stButton > button {
-            border-radius: var(--radius) !important;
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 600 !important;
-            font-size: 0.82rem !important;
-            padding: 0.55rem 1.4rem !important;
-            transition: all 0.15s ease !important;
-            text-transform: none !important;
-            letter-spacing: 0.2px !important;
-            background: var(--primary) !important;
-            color: #fff !important;
-            border: 1px solid var(--primary) !important;
-        }
-        .stButton > button:hover {
-            background: var(--primary-hover) !important;
-            border-color: var(--primary-hover) !important;
-            box-shadow: 0 4px 14px rgba(124, 106, 239, 0.25) !important;
-        }
-        .stButton > button:active {
-            transform: scale(0.98);
-        }
-
-        /* Secondary / ghost buttons */
-        .ghost-btn button {
-            background: transparent !important;
-            color: var(--text-secondary) !important;
-            border: 1px solid var(--border-light) !important;
-        }
-        .ghost-btn button:hover {
-            color: var(--text) !important;
-            border-color: var(--text-secondary) !important;
-            background: var(--surface-raised) !important;
-            box-shadow: none !important;
-        }
-
-        /* Thumb buttons for gallery */
-        .thumb-btn button {
-            background: var(--surface) !important;
-            color: var(--text-secondary) !important;
-            border: 1px solid var(--border) !important;
-            padding: 0.3rem 0.5rem !important;
-            font-size: 0.72rem !important;
-            min-height: 0 !important;
-        }
-        .thumb-btn button:hover {
-            border-color: var(--primary) !important;
-            color: var(--primary) !important;
-            box-shadow: none !important;
-        }
-
-        /* ─── Inputs ─── */
-        .stTextInput > div > div,
-        .stTextArea > div > textarea,
-        .stSelectbox > div > div {
-            background-color: var(--surface) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius) !important;
-            color: var(--text) !important;
-            font-family: 'Inter', sans-serif !important;
-            font-size: 0.85rem !important;
-        }
-        .stTextInput > div > div:focus-within,
-        .stTextArea > div > textarea:focus,
-        .stSelectbox > div > div:focus-within {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 0 3px var(--primary-dim) !important;
-        }
-
-        /* Labels */
-        .stTextInput label, .stTextArea label, .stSelectbox label,
-        .stFileUploader label, .stCheckbox label {
-            font-family: 'Inter', sans-serif !important;
-            font-size: 0.82rem !important;
-        }
-
-        /* ─── File uploader ─── */
-        [data-testid="stFileUploader"] section {
-            border: 2px dashed var(--border-light) !important;
-            border-radius: var(--radius-lg) !important;
-            padding: 2rem !important;
-            transition: border-color 0.2s !important;
-        }
-        [data-testid="stFileUploader"] section:hover {
-            border-color: var(--primary) !important;
-        }
-
-        /* ─── Progress ─── */
-        .stProgress > div > div > div > div {
-            background: linear-gradient(90deg, var(--primary), var(--primary-hover)) !important;
-            border-radius: 4px !important;
-        }
-
-        /* ─── Container borders ─── */
-        [data-testid="stExpander"],
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(> div[data-testid="stVerticalBlock"] > div.element-container) {
-            border-radius: var(--radius-lg) !important;
-        }
-
-        /* ─── Price tag ─── */
-        .price-tag {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--green);
-            font-family: 'JetBrains Mono', monospace;
-            margin: 0.75rem 0 0.25rem 0;
-        }
-
-        /* ─── Meta badges ─── */
-        .meta-row {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
-        }
-        .meta-badge {
-            font-size: 0.7rem;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-secondary);
-            background: var(--bg);
-            border: 1px solid var(--border);
-            padding: 3px 10px;
+        [data-testid="stSidebarNav"] li {
+            margin-bottom: 5px;
             border-radius: 4px;
-            display: inline-block;
+            transition: all 0.3s;
+        }
+        [data-testid="stSidebarNav"] li:hover {
+            background: rgba(188, 19, 254, 0.1);
+            box-shadow: inset 0 0 10px rgba(188, 19, 254, 0.2);
         }
 
-        /* ─── Result reference ─── */
-        .result-ref {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--primary-hover);
-            margin-bottom: 0.5rem;
-        }
-
-        /* ─── Desc header ─── */
-        .desc-hdr {
-            font-size: 0.68rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
-            margin-bottom: 0.75rem;
-        }
-
-        /* ─── File info chip ─── */
-        .file-chip {
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            background: var(--green-dim);
-            border: 1px solid rgba(63,185,80,0.15);
-            border-radius: var(--radius);
-            margin: 0.75rem 0;
-            font-size: 0.82rem;
-            color: var(--green);
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s;
+            text-decoration: none !important;
+            box-shadow: 0 0 10px var(--primary-glow);
         }
-
-        /* ─── Status items ─── */
-        .st-item {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin-bottom: 3px;
+        .back-to-top:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: translateY(-3px);
         }
-        .st-item.proc { background: var(--primary-dim); color: var(--primary-hover); }
-        .st-item.ok   { background: var(--green-dim); color: var(--green); }
-        .st-item.fail { background: var(--red-dim); color: var(--red); }
-
-        /* ─── Brand ─── */
-        .brand {
-            text-align: center;
-            padding: 1.25rem 0 0.5rem 0;
-        }
-        .brand h1 {
-            font-size: 1.5rem;
-            font-weight: 300;
-            letter-spacing: 5px;
-            color: var(--text);
-            margin: 0;
-            line-height: 1;
-        }
-        .brand h1 b {
-            font-weight: 700;
-            color: var(--primary);
-        }
-        .brand .sub {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            margin-top: 4px;
-        }
-
-        /* ─── Download button ─── */
-        .stDownloadButton > button {
-            background: transparent !important;
-            color: var(--text-secondary) !important;
-            border: 1px solid var(--border-light) !important;
-        }
-        .stDownloadButton > button:hover {
-            color: var(--text) !important;
-            border-color: var(--text-secondary) !important;
-            box-shadow: none !important;
-        }
-
-        /* ─── Scrollbar ─── */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
         </style>
+        <a href="#lagent-ai" class="back-to-top">↑</a>
     """, unsafe_allow_html=True)
+
 
 
 # ──────────────────────────────────────────────
@@ -473,7 +231,10 @@ def view_config():
         with st.container(border=True):
             st.markdown('<div class="card-hdr">Settings</div>', unsafe_allow_html=True)
 
-            categories = list(st.session_state.db.keys())
+            categories = [c for c in st.session_state.db.keys() if c.strip()]
+            if not categories:
+                categories = ["GENERAL"]
+            
             cat = st.selectbox("Category", categories)
             st.session_state["_active_cat"] = cat
 
@@ -925,7 +686,7 @@ def _prepare_download_zip():
 
 def main():
     st.set_page_config(
-        page_title="Product AI Agent",
+        page_title="Lagent Agent",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -933,8 +694,8 @@ def main():
 
     # Brand header
     st.markdown(
-        '<div class="brand">'
-        "<h1>Product<b>AI</b></h1>"
+        '<div class="brand" id="lagent-ai">'
+        "<h1>Lagent<b>AI</b></h1>"
         '<p class="sub">Catalog Processing Agent</p>'
         "</div>",
         unsafe_allow_html=True,
